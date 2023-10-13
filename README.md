@@ -1,3 +1,3 @@
 # GENPLAYLIST
 
-## Generate playlist from your favorites music websites
+Generate playlist from your favorites music websites
