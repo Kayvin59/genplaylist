@@ -1,3 +1,14 @@
 {
-  "extends": ["next/core-web-vitals", "eslint:recommended", "prettier"]
+	"extends": ["next/core-web-vitals", "eslint:recommended", "prettier"],
+	"parserOptions": {
+		"ecmaFeatures": {
+			"jsx": true
+		}
+	},
+	"plugins": ["react", "react-hooks", "simple-import-sort"],
+	"settings": {
+		"react": {
+			"version": "detect"
+		}
+	}
 }
