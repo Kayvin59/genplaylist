@@ -15,7 +15,7 @@ export default function Header() {
 					alt="Follow us on Twitter"
 				/>
 			</Link>
-			<Button asChild>
+			<Button asChild className="mb-3">
 				<Link href="/login">Login</Link>
 			</Button>
 		</header>
