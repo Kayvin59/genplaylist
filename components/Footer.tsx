@@ -3,7 +3,7 @@ import React from "react";
 
 export default function Footer() {
 	return (
-		<footer className="flex items-center justify-between w-full h-24 text-[#707070] font-bold border-t border-gray-500 sm:px-6 px-4">
+		<footer className="flex items-center justify-between w-full h-20 text-[#707070] font-bold border-t border-gray-500 sm:px-6 px-4">
 			<span>
 				Created by{" "}
 				<Link
