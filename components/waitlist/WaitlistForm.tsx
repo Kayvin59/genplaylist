@@ -48,13 +48,13 @@ export default function WaitlistForm() {
 					control={form.control}
 					name="username"
 					render={({ field }) => (
-						<FormItem className="flex flex-wrap items-center gap-4">
-							<FormLabel className="w-[22%] text-right">Username</FormLabel>
+						<FormItem className="flex flex-col flex-wrap items-start">
+							<FormLabel className="text-right pr-2">Username</FormLabel>
 							<FormControl>
 								<Input
 									type="text"
 									placeholder="playlistMaker"
-									className="bg-white w-[73%]"
+									className="bg-white w-[75%] m-0"
 									{...field}
 								/>
 							</FormControl>
@@ -66,13 +66,13 @@ export default function WaitlistForm() {
 					control={form.control}
 					name="email"
 					render={({ field }) => (
-						<FormItem className="flex flex-wrap items-center gap-4">
-							<FormLabel className="w-[22%] text-right">Email</FormLabel>
+						<FormItem className="flex flex-col flex-wrap items-start">
+							<FormLabel className="text-right pr-2">Email</FormLabel>
 							<FormControl>
 								<Input
 									type="email"
 									placeholder="myusername@genplaylist.com"
-									className="bg-white w-[73%]"
+									className="bg-white w-[75%] m-0"
 									{...field}
 								/>
 							</FormControl>
