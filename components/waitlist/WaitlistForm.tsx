@@ -16,14 +16,6 @@ import {
 import { Input } from "@/components/ui/input";
 
 const FormSchema = z.object({
-	username: z
-		.string()
-		.min(2, {
-			message: "Username must be at least 2 characters.",
-		})
-		.max(30, {
-			message: "Username must not be longer than 30 characters.",
-		}),
 	email: z.string().min(1, { message: "Email is required" }).email({
 		message: "Must be a valid email",
 	}),
@@ -34,8 +26,26 @@ export default function WaitlistForm() {
 		resolver: zodResolver(FormSchema),
 	});
 
-	function onSubmit(values: z.infer<typeof FormSchema>) {
-		console.log("values:", values);
+	async function onSubmit(data: z.infer<typeof FormSchema>) {
+		try {
+			const response = await fetch("/api/subscribe", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify(data),
+			});
+			console.log("response:", response);
+
+			if (response.ok) {
+				const responseData = await response.json();
+				return responseData;
+			} else {
+				console.log("Server returned an error::", response.status);
+			}
+		} catch (error) {
+			console.error("error:", error);
+		}
 	}
 
 	return (
@@ -46,24 +56,6 @@ export default function WaitlistForm() {
 			>
 				<FormField
 					control={form.control}
-					name="username"
-					render={({ field }) => (
-						<FormItem className="flex flex-col flex-wrap items-start">
-							<FormLabel className="text-right pr-2">Username</FormLabel>
-							<FormControl>
-								<Input
-									type="text"
-									placeholder="playlistMaker"
-									className="bg-white w-[75%] m-0"
-									{...field}
-								/>
-							</FormControl>
-							<FormMessage className="w-full" />
-						</FormItem>
-					)}
-				/>
-				<FormField
-					control={form.control}
 					name="email"
 					render={({ field }) => (
 						<FormItem className="flex flex-col flex-wrap items-start">
@@ -71,7 +63,7 @@ export default function WaitlistForm() {
 							<FormControl>
 								<Input
 									type="email"
-									placeholder="myusername@genplaylist.com"
+									placeholder="username@genplaylist.com"
 									className="bg-white w-[75%] m-0"
 									{...field}
 								/>
