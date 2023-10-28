@@ -66,6 +66,9 @@ export default function WaitlistForm() {
 									placeholder="username@genplaylist.com"
 									className="bg-white w-[75%] m-0"
 									{...field}
+									onChange={(event) => {
+										event.preventDefault();
+									}}
 								/>
 							</FormControl>
 							<FormMessage className="w-full" />
