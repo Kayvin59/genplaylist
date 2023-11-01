@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 
 export default function Header() {
 	return (
-		<header className="flex xs:flex-row justify-between items-center w-full border-b sm:px-6 p-4 border-gray-500 gap-2">
+		<header className="flex xs:flex-row justify-center items-center w-full border-b sm:px-6 p-4 border-gray-500 gap-2">
 			<Link href="/" className="pt-3">
 				<Image
 					priority
@@ -15,9 +15,9 @@ export default function Header() {
 					alt="Follow us on Twitter"
 				/>
 			</Link>
-			<Button asChild className="font-bold">
+			{/* <Button asChild disabled className="font-bold">
 				<Link href="/login">Login</Link>
-			</Button>
+			</Button> */}
 		</header>
 	);
 }
