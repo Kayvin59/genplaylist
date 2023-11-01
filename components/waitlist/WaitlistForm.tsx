@@ -14,6 +14,7 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Loader2, CheckCircle2 } from "lucide-react";
 
 const FormSchema = z.object({
 	email: z.string().min(1, { message: "Email is required" }).email({
@@ -24,7 +25,30 @@ const FormSchema = z.object({
 export default function WaitlistForm() {
 	const form = useForm<z.infer<typeof FormSchema>>({
 		resolver: zodResolver(FormSchema),
+		defaultValues: {
+			email: "",
+		},
 	});
+
+	const isSubmitting = form.formState.isSubmitting;
+	const isSubmitSuccessful = form.formState.isSubmitSuccessful;
+
+	function renderButton() {
+		if (isSubmitting) {
+			return (
+				<Button type="submit" className="gap-4 self-end">
+					<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+					Submiting...
+				</Button>
+			);
+		} else {
+			return (
+				<Button type="submit" className="gap-4 self-end">
+					Submit
+				</Button>
+			);
+		}
+	}
 
 	async function onSubmit(data: z.infer<typeof FormSchema>) {
 		try {
@@ -39,6 +63,7 @@ export default function WaitlistForm() {
 
 			if (response.ok) {
 				const responseData = await response.json();
+				form.reset();
 				return responseData;
 			} else {
 				console.log("Server returned an error::", response.status);
@@ -64,20 +89,28 @@ export default function WaitlistForm() {
 								<Input
 									type="email"
 									placeholder="username@genplaylist.com"
-									className="bg-white w-[75%] m-0"
+									className="bg-white m-0"
 									{...field}
-									onChange={(event) => {
-										event.preventDefault();
-									}}
 								/>
 							</FormControl>
 							<FormMessage className="w-full" />
 						</FormItem>
 					)}
 				/>
-				<Button type="submit" className="gap-4 self-end">
-					Submit
-				</Button>
+				{renderButton()}
+				{isSubmitSuccessful && (
+					<div className="flex flex-col gap-2 text-center text-muted-foreground">
+						<CheckCircle2 className="text-green-500" />
+						<span className="text-xl text-foreground uppercase font-bold">
+							Success!
+						</span>
+						<span>Your email has been added to the GenPlaylist waitlist.</span>
+						<span>
+							We're thrilled to have you on board. Watch your inbox for exciting
+							updates!
+						</span>
+					</div>
+				)}
 			</form>
 		</Form>
 	);
