@@ -11,7 +11,8 @@ const roboto = Roboto({
 
 export const metadata: Metadata = {
 	title: "GenPlaylist",
-	description: "Generate playlist from your favorites music websites",
+	description:
+		"Easily generate playlist from your favorite music websites with GenPlaylist. Share your link and get a playlist on any streaming platform.",
 };
 
 export default function RootLayout({
