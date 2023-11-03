@@ -100,7 +100,7 @@ export default function WaitlistForm() {
 				{renderButton()}
 				{isSubmitSuccessful && (
 					<div className="flex flex-col gap-2 text-center text-muted-foreground">
-						<CheckCircle2 className="text-green-500" />
+						<CheckCircle2 className="text-green-500 mx-auto" />
 						<span className="text-xl text-foreground uppercase font-bold">
 							Success!
 						</span>
