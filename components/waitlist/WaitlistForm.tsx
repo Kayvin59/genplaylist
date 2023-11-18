@@ -100,8 +100,8 @@ export default function WaitlistForm() {
 				{renderButton()}
 				{isSubmitSuccessful && (
 					<div className="flex flex-col gap-2 text-center text-muted-foreground">
-						<CheckCircle2 className="text-green-500 mx-auto" />
-						<span className="text-xl text-foreground uppercase font-bold">
+						<CheckCircle2 className="text-green-500 mx-auto my-0" />
+						<span className="text-2xl text-foreground uppercase font-bold">
 							Success!
 						</span>
 						<span>Your email has been added to the GenPlaylist waitlist.</span>
