@@ -17,7 +17,7 @@ export default function WaitlistDialog() {
 			<DialogTrigger asChild>
 				<Button className="font-bold">Join the waitlist</Button>
 			</DialogTrigger>
-			<DialogContent className="sm:max-w-[425px] border-[#707070] max-w-[80%] rounded">
+			<DialogContent className="sm:max-w-[425px] border-secondary-foreground max-w-[80%] rounded">
 				<DialogHeader className="mb-2">
 					<DialogTitle>Join the waitlist!</DialogTitle>
 					<DialogDescription>
