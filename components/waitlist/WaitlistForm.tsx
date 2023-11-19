@@ -33,7 +33,7 @@ export default function WaitlistForm() {
 	const isSubmitting = form.formState.isSubmitting;
 	const isSubmitSuccessful = form.formState.isSubmitSuccessful;
 
-	function renderButton() {
+	function renderSubmitButton() {
 		if (isSubmitting) {
 			return (
 				<Button type="submit" className="gap-4 self-end">
@@ -97,7 +97,7 @@ export default function WaitlistForm() {
 						</FormItem>
 					)}
 				/>
-				{renderButton()}
+				{renderSubmitButton()}
 				{isSubmitSuccessful && (
 					<div className="flex flex-col gap-2 text-center text-muted-foreground">
 						<CheckCircle2 className="text-green-500 mx-auto my-0" />
