@@ -1,6 +1,5 @@
 "use client";
 
-import WaitlistForm from "@/components/waitlist/WaitlistForm";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -10,6 +9,7 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
+import WaitlistForm from "@/components/waitlist/WaitlistForm";
 
 export default function WaitlistDialog() {
 	return (

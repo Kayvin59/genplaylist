@@ -14,7 +14,7 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Loader2, CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 
 const FormSchema = z.object({
 	email: z.string().min(1, { message: "Email is required" }).email({

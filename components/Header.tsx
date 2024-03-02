@@ -1,7 +1,6 @@
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
 import Logo from "../public/genplaylist2.svg";
-import { Button } from "@/components/ui/button";
 
 export default function Header() {
 	return (
@@ -9,9 +8,6 @@ export default function Header() {
 			<Link href="/" className="pt-3">
 				<Image priority src={Logo} width={200} alt="Follow us on Twitter" />
 			</Link>
-			{/* <Button asChild disabled className="font-bold">
-				<Link href="/login">Login</Link>
-			</Button> */}
 		</header>
 	);
 }
