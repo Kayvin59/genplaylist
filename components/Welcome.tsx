@@ -1,21 +1,24 @@
 "use client"
 
-import { SignIn, useUser } from "@clerk/nextjs"
+import { SignIn, SignOutButton, useUser } from "@clerk/nextjs"
 
 export default function Welcome() {
-    const { user } = useUser()
+    const { user, isSignedIn } = useUser()
 
-    if (!user) {
+    if (!isSignedIn) {
       return (
         <>
-          <SignIn />
+          <SignIn afterSignInUrl="/generate" />
         </>
       )
     }
 
     return (
-        <>
-        <div>Welcome!</div>
-        </>
+        <div>
+          <p>Welcome {user.firstName} !</p>
+          <SignOutButton>
+            <button>Sign out</button>
+          </SignOutButton>
+        </div>
     )
 }
