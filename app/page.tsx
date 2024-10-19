@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { ArrowUpRightSquare } from 'lucide-react';
 import Link from "next/link";
 
 export default function Home() {
@@ -13,10 +12,7 @@ export default function Home() {
 			</h2>
 			<Button asChild className="text-lg font-semibold p-5">
 				<Link href="/generate">
-					Generate your playlist now
-					<span className=" ml-4 text-lg font-semibold">
-						<ArrowUpRightSquare />
-					</span>
+					Get started
 				</Link>
 			</Button>
 		</>
