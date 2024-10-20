@@ -1,6 +1,5 @@
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
-import { ClerkProvider } from '@clerk/nextjs';
 import { Analytics } from "@vercel/analytics/react";
 import type { Metadata } from "next";
 import { Roboto } from "next/font/google";
@@ -24,7 +23,7 @@ export default function RootLayout({
 	children: React.ReactNode;
 }) {
 	return (
-		<ClerkProvider>
+		<>
 			<html lang="en">
 				<body className={`${roboto.className}`}>
 					<div className="flex max-w-6xl mx-auto flex-col items-center min-h-screen">
@@ -37,6 +36,6 @@ export default function RootLayout({
 					</div>
 				</body>
 			</html>
-		</ClerkProvider>
+		</>
 	);
 }
