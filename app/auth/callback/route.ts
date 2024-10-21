@@ -1,14 +1,21 @@
 import { createClient } from '@/utils/supabase/server'
+import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
-  const requestUrl = new URL(request.url)
-  const code = requestUrl.searchParams.get('code')
+
+  const { searchParams, origin } = new URL(request.url)
+  const code = searchParams.get('code')
+  const next = searchParams.get('next') ?? '/generate'
 
   if (code) {
+    const cookieStore = cookies()
     const supabase = createClient()
-    await supabase.auth.exchangeCodeForSession(code)
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    if (!error) {
+      return NextResponse.redirect(`${origin}${next}`)
+    }
   }
-  console.log('Redirecting to', requestUrl.origin)
-  return NextResponse.redirect(requestUrl.origin)
+  console.log('Redirecting to', origin)
+  return NextResponse.redirect(`${origin}`)
 }

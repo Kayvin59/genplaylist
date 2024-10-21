@@ -12,7 +12,7 @@ export async function signInWithSpotify() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'spotify',
     options: {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?next=/generate`,
     },
   })
 
@@ -21,15 +21,10 @@ export async function signInWithSpotify() {
     return { error: error.message }
   }
 
-  console.log('Data:', data.url)
   if (data.url) {
+    revalidatePath('/', 'layout')
     redirect(data.url)
   }
-
-  // redirect('/generate')
-
-  // revalidatePath('/', 'generate')
-  // redirect('/')
 }
 
 export async function signOut() {
@@ -43,6 +38,6 @@ export async function signOut() {
     return { error: error.message }
   }
 
-  revalidatePath('/')
+  revalidatePath('/', 'layout')
   redirect('/')
 }
