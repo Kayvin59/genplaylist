@@ -1,64 +1,28 @@
-import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { subscribeAction } from '@/app/actions/subscribe'
+import { NextRequest, NextResponse } from 'next/server'
 
-export async function POST(req: Request) {
-	// We only want to handle POST requests, everything else gets a 404
-	if (req.method === "POST") {
-		try {
-			const emailResponse = await postHandler(req);
-			return emailResponse;
-		} catch (error) {
-			console.log("Error:", error);
-			return NextResponse.json(
-				{ message: "Something went wrong" },
-				{ status: 500 },
-			);
-		}
-	} else {
-		return NextResponse.json(
-			{ message: "Only Post requests are allowed" },
-			{ status: 404 },
-		);
-	}
-}
+export async function POST(request: NextRequest) {
+  if (request.method !== "POST") {
+    return NextResponse.json(
+      { message: "Only POST requests are allowed" },
+      { status: 405 }
+    )
+  }
 
-async function postHandler(request: Request) {
-	try {
-		const { email } = await request.json();
-		if (!email) {
-			return NextResponse.json(
-				{ message: "Email is required" },
-				{ status: 400 },
-			);
-		}
-		// Save the email to the database
-		await saveEmail(email);
-		return NextResponse.json(email);
-	} catch (error) {
-		console.log("Error:", error);
-		return NextResponse.json(
-			{ message: "Something went wrong" },
-			{ status: 500 },
-		);
-	}
-}
+  try {
+    const formData = await request.formData()
+    const result = await subscribeAction(formData)
 
-async function saveEmail(email: string) {
-	try {
-		const { data, error } = await supabase.from("EarlyUsers").insert({ email });
-		if (error) {
-			console.error("Error:", error);
-			return NextResponse.json(
-				{ message: "Something went wrong" },
-				{ status: 500 },
-			);
-		}
-		return NextResponse.json(data);
-	} catch (error) {
-		console.error("Error:", error);
-		return NextResponse.json(
-			{ message: "Something went wrong" },
-			{ status: 500 },
-		);
-	}
+    if ('error' in result) {
+      return NextResponse.json({ error: result.error }, { status: 400 })
+    }
+
+    return NextResponse.json(result)
+  } catch (error) {
+    console.error("Error:", error)
+    return NextResponse.json(
+      { message: "Something went wrong" },
+      { status: 500 }
+    )
+  }
 }
