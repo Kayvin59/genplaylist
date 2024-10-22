@@ -15,7 +15,7 @@ export default function LoginButton() {
   }
 
   return (
-    <Button onClick={handleLogin} disabled={isPending}>
+    <Button className="text-lg font-semibold p-5" onClick={handleLogin} disabled={isPending}>
       {isPending ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
