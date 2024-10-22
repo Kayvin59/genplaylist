@@ -1,3 +1,4 @@
+import UrlInput from '@/components/urlInput'
 import Welcome from '@/components/Welcome'
 
 export default async function GeneratePage() {
@@ -6,6 +7,7 @@ export default async function GeneratePage() {
     <>
       <div>Generate Page</div>
       <Welcome />
+      <UrlInput />
     </>
   )
 }
