@@ -9,7 +9,7 @@ export async function signInWithSpotify() {
   const cookieStore = cookies()
   const supabase = createClient()
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || `https://${process.env.VERCEL_URL}` || 'http://localhost:3000'
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || `https://${process.env.VERCEL_URL}`
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'spotify',

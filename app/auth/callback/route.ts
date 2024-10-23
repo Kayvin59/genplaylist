@@ -4,11 +4,11 @@ import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
 
-  const { searchParams, origin } = new URL(request.url)
+  const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
   const next = searchParams.get('next') ?? '/generate'
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || `https://${process.env.VERCEL_URL}` || origin
-
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || `https://${process.env.VERCEL_URL}`
+  console.log('siteUrl-route', siteUrl)
   if (code) {
     const cookieStore = cookies()
     const supabase = createClient()
