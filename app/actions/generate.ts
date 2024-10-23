@@ -21,8 +21,6 @@ export async function scrapeUrl(prevState: any, formData: FormData) {
     // Simulating a delay for scraping
     await new Promise(resolve => setTimeout(resolve, 2000))
 
-    // Add your actual scraping logic here
-    // For now, we'll just return a mock result
     return { 
       success: true, 
       data: { 
@@ -38,5 +36,5 @@ export async function scrapeUrl(prevState: any, formData: FormData) {
 
 export async function generatePlaylist() {
   // Playlist generation via spotifyApi
-  // This will be implemented in another function
+
 }
