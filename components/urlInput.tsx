@@ -15,10 +15,10 @@ function SubmitButton() {
       {pending ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Generating...
+          Scraping...
         </>
       ) : (
-        'Generate Playlist'
+        'Scrape Drop Watch Post'
       )}
     </Button>
   )
@@ -44,7 +44,16 @@ export default function UrlInput() {
         <p className="text-red-500 text-sm">{state.error}</p>
       )}
       {state?.success && (
-        <p className="text-green-500 text-sm">URL scraped successfully: {state.data.url}</p>
+        <div className="mt-4">
+          <h2 className="text-xl font-bold">{state.data.title}</h2>
+          <ul className="mt-2 space-y-2">
+            {state.data.links.map((link, index) => (
+              <li key={index} className="border p-2 rounded">
+                {link}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   )

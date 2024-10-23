@@ -31,8 +31,8 @@ export default function Welcome() {
       <p>Welcome, {user.user_metadata.full_name || user.email}!</p>
       <div className="space-y-4">
           <div>
-            <h3 className="text-lg font-semibold">User Information</h3>
-            <p><strong>User ID:</strong> {user.id}</p>
+            <h3 className="text-lg font-semibold">User Information </h3>
+            <p><strong>User ID:</strong> {user.identities && user.identities[0].id}</p>
             <p><strong>Email:</strong> {user.email}</p>
             <p><strong>Last Sign In:</strong> {new Date(user.last_sign_in_at || '').toLocaleString()}</p>
           </div>
