@@ -1,29 +1,48 @@
-'use client'
+"use client"
 
 import { signInWithSpotify } from "@/app/actions/auth"
 import { Button } from "@/components/ui/button"
-import { Loader2 } from 'lucide-react'
-import { useTransition } from 'react'
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card"
+import { Loader2, Music } from "lucide-react"
+import { useTransition } from "react"
 
 export default function LoginButton() {
   const [isPending, startTransition] = useTransition()
 
   const handleLogin = () => {
-    startTransition(() => {
-      signInWithSpotify()
+    startTransition(async () => {
+      try {
+        await signInWithSpotify()
+      } catch (error) {
+        console.error("Login failed:", error)
+      }
     })
   }
 
   return (
-    <Button className="text-lg font-semibold p-5" onClick={handleLogin} disabled={isPending}>
-      {isPending ? (
-        <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Connecting...
-        </>
-      ) : (
-        'Sign in with Spotify'
-      )}
-    </Button>
+    <Card className="w-full max-w-md mx-auto">
+      <CardHeader className="text-center">
+        <CardDescription>Connect your Spotify account to generate playlists from any URL</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button
+          className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3"
+          onClick={handleLogin}
+          disabled={isPending}
+        >
+          {isPending ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Connecting to Spotify...
+            </>
+          ) : (
+            <>
+              <Music className="mr-2 h-4 w-4" />
+              Sign in with Spotify
+            </>
+          )}
+        </Button>
+      </CardContent>
+    </Card>
   )
 }

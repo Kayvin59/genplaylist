@@ -1,43 +1,52 @@
-'use client'
+"use client"
 
 import { signOut } from "@/app/actions/auth"
 import { Button } from "@/components/ui/button"
-import { createClient } from '@/utils/supabase/client'
-import { User } from '@supabase/supabase-js'
-import { useEffect, useState } from 'react'
-import LoginButton from './LoginButton'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import type { User } from "@supabase/supabase-js"
+import { UserIcon } from "lucide-react"
 
+interface SpotifyUserData {
+  display_name?: string
+  avatar_url?: string
+  followers?: { total: number }
+  country?: string
+}
 
-export default function Welcome() {
-  const [user, setUser] = useState<User | null>(null)
-  const supabase = createClient()
+interface WelcomeProps {
+  user: User
+  spotifyData: SpotifyUserData
+}
 
-  // Add loading indicator + Supabase Session
-  useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
-    }
-
-    fetchUser()
-  }, [supabase])
-
-  if (!user) {
-    return <LoginButton />
-  }
+export default function Welcome({ user, spotifyData }: WelcomeProps) {
+  const displayName = spotifyData?.display_name || user.email?.split("@")[0] || "User"
 
   return (
-    <div>
-      <p>Welcome, {user.user_metadata.full_name || user.email}!</p>
-      <div className="space-y-4">
-          <div>
-            <h3 className="text-lg font-semibold">User Information </h3>
-            <p><strong>User ID:</strong> {user.identities && user.identities[0].id}</p>
-            <p><strong>Email:</strong> {user.email}</p>
-            <p><strong>Last Sign In:</strong> {new Date(user.last_sign_in_at || '').toLocaleString()}</p>
-          </div>
+    <Card className="w-full max-w-md mx-auto mb-5">
+      <CardHeader className="text-center">
+        <div className="flex items-center justify-center mb-4">
+          {spotifyData?.avatar_url ? (
+            <img
+              src={spotifyData.avatar_url || "/placeholder.svg"}
+              alt="Profile"
+              className="w-16 h-16 rounded-full border-2 border-green-500"
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-full bg-green-500 flex items-center justify-center">
+              <UserIcon className="w-8 h-8 text-white" />
+            </div>
+          )}
         </div>
-      <Button onClick={() => signOut()}>Sign out</Button>
-    </div>
+        <CardTitle className="flex items-center justify-center gap-2">
+          Welcome, {displayName}!
+        </CardTitle>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        <Button onClick={() => signOut()} variant="outline" className="w-full">
+          Sign out
+        </Button>
+      </CardContent>
+    </Card>
   )
 }
