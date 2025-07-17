@@ -20,9 +20,9 @@ export default function LoginButton() {
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto">
+    <Card className="w-full max-w-md mx-auto border border-gray-500">
       <CardHeader className="text-center">
-        <CardDescription>Connect your Spotify account to generate playlists from any URL</CardDescription>
+        <CardDescription className="text-gray-500">Connect your Spotify account to generate playlists from any URL</CardDescription>
       </CardHeader>
       <CardContent>
         <Button

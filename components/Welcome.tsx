@@ -22,7 +22,7 @@ export default function Welcome({ user, spotifyData }: WelcomeProps) {
   const displayName = spotifyData?.display_name || user.email?.split("@")[0] || "User"
 
   return (
-    <Card className="w-full max-w-md mx-auto mb-5">
+    <Card className="w-full max-w-md mx-auto mb-12 border border-gray-500">
       <CardHeader className="text-center">
         <div className="flex items-center justify-center mb-4">
           {spotifyData?.avatar_url ? (
@@ -43,7 +43,7 @@ export default function Welcome({ user, spotifyData }: WelcomeProps) {
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <Button onClick={() => signOut()} variant="outline" className="w-full">
+        <Button onClick={() => signOut()} className="w-full">
           Sign out
         </Button>
       </CardContent>
