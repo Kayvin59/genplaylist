@@ -146,7 +146,7 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
                   <iframe
                     src={`https://open.spotify.com/embed/playlist/${playlistResult.playlistId}`}
                     width="100%"
-                    height="380"
+                    height="400"
                     frameBorder="0"
                     allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                     loading="lazy"
@@ -175,8 +175,7 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
   return (
     <Card className="w-full border border-gray-500">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Music className="w-5 h-5" />
+        <CardTitle className="flex items-center gap-2 mb-4">
           {data.title}
         </CardTitle>
         <div className="flex items-center justify-between">
