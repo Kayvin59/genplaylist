@@ -1,27 +1,7 @@
 "use server"
 
+import { CreatePlaylistParams, PlaylistResult } from "@/types"
 import { createClient } from "@/utils/supabase/server"
-
-interface Track {
-  title: string
-  artist: string
-}
-
-interface CreatePlaylistParams {
-  name: string
-  description: string
-  tracks: Track[]
-}
-
-interface PlaylistResult {
-  success: boolean
-  error?: string
-  needsAuth?: boolean
-  playlistId?: string
-  playlistUrl?: string
-  tracksAdded?: number
-  totalTracks?: number
-}
 
 export async function createPlaylist({ name, description, tracks }: CreatePlaylistParams): Promise<PlaylistResult> {
   const supabase = await createClient()

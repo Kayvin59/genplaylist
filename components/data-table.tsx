@@ -8,22 +8,10 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { ScrapedDataTableProps, Track } from "@/types"
 import { Check, ChevronLeft, ChevronRight, ExternalLink, Loader2, Music, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-
-interface Track {
-  title: string
-  artist: string
-  selected: boolean
-}
-
-interface ScrapedDataTableProps {
-  data: {
-    title: string
-    links: string[]
-  }
-}
 
 const ITEMS_PER_PAGE = 10
 

@@ -1,5 +1,6 @@
 'use server'
 
+import { ScrapedData } from '@/types';
 import * as cheerio from 'cheerio';
 import { z } from 'zod';
 
@@ -7,10 +8,7 @@ const urlSchema = z.object({
   url: z.string().url().startsWith('https://www.reddit.com/r/hiphopheads')
 })
 
-interface ScrapedData {
-  title: string;
-  links: string[];
-}
+
 
 export async function scrapeUrl(prevState: any, formData: FormData) {
   const validatedFields = urlSchema.safeParse({

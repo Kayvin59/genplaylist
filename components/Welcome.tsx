@@ -3,20 +3,9 @@
 import { signOut } from "@/app/actions/auth"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { User } from "@supabase/supabase-js"
+import { WelcomeProps } from "@/types"
 import { UserIcon } from "lucide-react"
 
-interface SpotifyUserData {
-  display_name?: string
-  avatar_url?: string
-  followers?: { total: number }
-  country?: string
-}
-
-interface WelcomeProps {
-  user: User
-  spotifyData: SpotifyUserData
-}
 
 export default function Welcome({ user, spotifyData }: WelcomeProps) {
   const displayName = spotifyData?.display_name || user.email?.split("@")[0] || "User"

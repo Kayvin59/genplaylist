@@ -1,22 +1,9 @@
 "use client"
 
+import { SpotifyUserData, UseAuthReturn } from "@/types"
 import { createClient } from "@/utils/supabase/client"
 import type { User } from "@supabase/supabase-js"
 import { useEffect, useState } from "react"
-
-interface SpotifyUserData {
-  display_name?: string
-  avatar_url?: string
-  followers?: { total: number }
-  country?: string
-}
-
-interface UseAuthReturn {
-  user: User | null
-  spotifyData: SpotifyUserData | null
-  loading: boolean
-  error: string | null
-}
 
 export function useAuth(): UseAuthReturn {
   const [user, setUser] = useState<User | null>(null)
