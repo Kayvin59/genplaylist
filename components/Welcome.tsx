@@ -32,7 +32,7 @@ export default function Welcome({ user, spotifyData }: WelcomeProps) {
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <Button onClick={() => signOut()} className="w-full">
+        <Button onClick={() => signOut()} className="w-full max-w-md bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-3 shadow-lg hover:shadow-xl transition-all duration-200">
           Sign out
         </Button>
       </CardContent>

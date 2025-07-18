@@ -186,7 +186,7 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Playlist Name Input */}
-        <div className="space-y-2">
+        <div className="space-y-2 text-left">
           <Label htmlFor="playlist-name">Playlist Name</Label>
           <Input
             id="playlist-name"
