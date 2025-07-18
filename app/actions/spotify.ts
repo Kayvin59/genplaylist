@@ -1,7 +1,6 @@
 "use server"
 
 import { createClient } from "@/utils/supabase/server"
-import { redirect } from "next/navigation"
 
 interface Track {
   title: string
@@ -14,17 +13,31 @@ interface CreatePlaylistParams {
   tracks: Track[]
 }
 
-export async function createPlaylist({ name, description, tracks }: CreatePlaylistParams) {
+interface PlaylistResult {
+  success: boolean
+  error?: string
+  needsAuth?: boolean
+  playlistId?: string
+  playlistUrl?: string
+  tracksAdded?: number
+  totalTracks?: number
+}
+
+export async function createPlaylist({ name, description, tracks }: CreatePlaylistParams): Promise<PlaylistResult> {
   const supabase = await createClient()
 
-  // Get current user and session
+// Get current user, session and structured response
   const {
     data: { user },
     error: userError,
   } = await supabase.auth.getUser()
 
   if (userError || !user) {
-    redirect("/auth/login")
+    return {
+      success: false,
+      error: "Authentication required",
+      needsAuth: true,
+    }
   }
 
   const {
@@ -33,14 +46,22 @@ export async function createPlaylist({ name, description, tracks }: CreatePlayli
   } = await supabase.auth.getSession()
 
   if (sessionError || !session?.provider_token) {
-    throw new Error("No Spotify access token available")
+    return {
+      success: false,
+      error: "Spotify access token not available. Please reconnect your account.",
+      needsAuth: true,
+    }
   }
 
   const accessToken = session.provider_token
   const spotifyUserId = user.user_metadata?.provider_id
 
   if (!spotifyUserId) {
-    throw new Error("Spotify user ID not found")
+    return {
+      success: false,
+      error: "Spotify user ID not found. Please reconnect your account.",
+      needsAuth: true,
+    }
   }
 
   try {
@@ -60,7 +81,20 @@ export async function createPlaylist({ name, description, tracks }: CreatePlayli
 
     if (!playlistResponse.ok) {
       const error = await playlistResponse.json()
-      throw new Error(`Failed to create playlist: ${error.error?.message || "Unknown error"}`)
+
+      // Handle token expiration
+      if (playlistResponse.status === 401) {
+        return {
+          success: false,
+          error: "Spotify session expired. Please reconnect your account.",
+          needsAuth: true,
+        }
+      }
+
+      return {
+        success: false,
+        error: `Failed to create playlist: ${error.error?.message || "Unknown error"}`,
+      }
     }
 
     const playlist = await playlistResponse.json()
@@ -70,7 +104,6 @@ export async function createPlaylist({ name, description, tracks }: CreatePlayli
 
     for (const track of tracks) {
       try {
-        // Search for the track
         const searchQuery = `track:"${track.title}" artist:"${track.artist}"`
         const searchResponse = await fetch(
           `https://api.spotify.com/v1/search?q=${encodeURIComponent(searchQuery)}&type=track&limit=1`,
@@ -120,6 +153,9 @@ export async function createPlaylist({ name, description, tracks }: CreatePlayli
     }
   } catch (error) {
     console.error("Error creating playlist:", error)
-    throw error
+    return {
+      success: false,
+      error: `Failed to create playlist: ${error instanceof Error ? error.message : "Unknown error"}`,
+    }
   }
 }
