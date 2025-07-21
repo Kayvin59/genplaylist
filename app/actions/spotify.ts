@@ -3,10 +3,40 @@
 import { CreatePlaylistParams, PlaylistResult } from "@/types"
 import { createClient } from "@/utils/supabase/server"
 
+
 export async function createPlaylist({ name, description, tracks }: CreatePlaylistParams): Promise<PlaylistResult> {
+  // Input Validation
+  if (!name?.trim()) {
+    return { success: false, error: "Playlist name is required" }
+  }
+
+  if (!tracks?.length) {
+    return { success: false, error: "No tracks selected" }
+  }
+
+  // Sanitize and validate inputs
+  const sanitizedName = name.trim().slice(0, 100) // Spotify limit
+  const sanitizedDescription = description.trim().slice(0, 300) // Spotify limit
+
+  if (sanitizedName.length < 1) {
+    return { success: false, error: "Playlist name cannot be empty" }
+  }
+
+  if (tracks.length > 10000) {
+    return { success: false, error: "Too many tracks selected (max 10,000)" }
+  }
+
+  // Validate track data
+  const validTracks = tracks.filter(
+    (track) => track?.title?.trim() && track?.artist?.trim() && track.title.length <= 200 && track.artist.length <= 200,
+  )
+
+  if (validTracks.length === 0) {
+    return { success: false, error: "No valid tracks found" }
+  }
+
   const supabase = await createClient()
 
-// Get current user, session and structured response
   const {
     data: { user },
     error: userError,
@@ -45,7 +75,7 @@ export async function createPlaylist({ name, description, tracks }: CreatePlayli
   }
 
   try {
-    // Step 1: Create empty playlist
+    // Create playlist with sanitized data
     const playlistResponse = await fetch(`https://api.spotify.com/v1/users/${spotifyUserId}/playlists`, {
       method: "POST",
       headers: {
@@ -53,8 +83,8 @@ export async function createPlaylist({ name, description, tracks }: CreatePlayli
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        name,
-        description,
+        name: sanitizedName,
+        description: sanitizedDescription,
         public: false,
       }),
     })
@@ -62,7 +92,6 @@ export async function createPlaylist({ name, description, tracks }: CreatePlayli
     if (!playlistResponse.ok) {
       const error = await playlistResponse.json()
 
-      // Handle token expiration
       if (playlistResponse.status === 401) {
         return {
           success: false,
@@ -79,48 +108,71 @@ export async function createPlaylist({ name, description, tracks }: CreatePlayli
 
     const playlist = await playlistResponse.json()
 
-    // Step 2: Search for tracks and collect URIs
+    // Search for tracks with rate limiting
     const trackUris: string[] = []
+    const batchSize = 10
 
-    for (const track of tracks) {
-      try {
-        const searchQuery = `track:"${track.title}" artist:"${track.artist}"`
-        const searchResponse = await fetch(
-          `https://api.spotify.com/v1/search?q=${encodeURIComponent(searchQuery)}&type=track&limit=1`,
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          },
-        )
+    for (let i = 0; i < validTracks.length; i += batchSize) {
+      const batch = validTracks.slice(i, i + batchSize)
 
-        if (searchResponse.ok) {
-          const searchResult = await searchResponse.json()
-          if (searchResult.tracks?.items?.length > 0) {
-            trackUris.push(searchResult.tracks.items[0].uri)
+      await Promise.all(
+        batch.map(async (track) => {
+          try {
+            // Sanitize search query
+            const sanitizedTitle = track.title.trim().replace(/[^\w\s-]/g, "")
+            const sanitizedArtist = track.artist.trim().replace(/[^\w\s-]/g, "")
+
+            const searchQuery = `track:"${sanitizedTitle}" artist:"${sanitizedArtist}"`
+
+            const searchResponse = await fetch(
+              `https://api.spotify.com/v1/search?q=${encodeURIComponent(searchQuery)}&type=track&limit=1`,
+              {
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                },
+              },
+            )
+
+            if (searchResponse.ok) {
+              const searchResult = await searchResponse.json()
+              if (searchResult.tracks?.items?.length > 0) {
+                trackUris.push(searchResult.tracks.items[0].uri)
+              }
+            }
+          } catch (error) {
+            console.error(`Failed to search for track: ${track.title} by ${track.artist}`, error)
           }
-        }
-      } catch (error) {
-        console.error(`Failed to search for track: ${track.title} by ${track.artist}`, error)
+        }),
+      )
+
+      // Rate limiting - wait between batches
+      if (i + batchSize < validTracks.length) {
+        await new Promise((resolve) => setTimeout(resolve, 100))
       }
     }
 
-    // Step 3: Add tracks to playlist (if any found)
+    // Add tracks to playlist in batches
     if (trackUris.length > 0) {
-      const addTracksResponse = await fetch(`https://api.spotify.com/v1/playlists/${playlist.id}/tracks`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          uris: trackUris,
-        }),
-      })
+      const addBatchSize = 100 // Spotify limit
 
-      if (!addTracksResponse.ok) {
-        const error = await addTracksResponse.json()
-        console.error("Failed to add tracks:", error)
+      for (let i = 0; i < trackUris.length; i += addBatchSize) {
+        const batch = trackUris.slice(i, i + addBatchSize)
+
+        const addTracksResponse = await fetch(`https://api.spotify.com/v1/playlists/${playlist.id}/tracks`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            uris: batch,
+          }),
+        })
+
+        if (!addTracksResponse.ok) {
+          const error = await addTracksResponse.json()
+          console.error("Failed to add tracks batch:", error)
+        }
       }
     }
 
@@ -129,7 +181,7 @@ export async function createPlaylist({ name, description, tracks }: CreatePlayli
       playlistId: playlist.id,
       playlistUrl: playlist.external_urls.spotify,
       tracksAdded: trackUris.length,
-      totalTracks: tracks.length,
+      totalTracks: validTracks.length,
     }
   } catch (error) {
     console.error("Error creating playlist:", error)

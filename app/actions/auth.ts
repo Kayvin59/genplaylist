@@ -7,10 +7,29 @@ import { redirect } from "next/navigation"
 export async function signInWithSpotify() {
   const supabase = await createClient()
 
-  const baseUrl =
-    process.env.NODE_ENV === "development"
-      ? "http://localhost:3000"
-      : process.env.NEXT_PUBLIC_SITE_URL || `https://${process.env.VERCEL_URL}`
+  const getBaseUrl = () => {
+    // Check for explicit site URL (production)
+    if (process.env.NEXT_PUBLIC_SITE_URL) {
+      return process.env.NEXT_PUBLIC_SITE_URL
+    }
+
+    // Check for Vercel URL (preview deployments)
+    if (process.env.VERCEL_URL) {
+      return `https://${process.env.VERCEL_URL}`
+    }
+
+    // Development fallback
+    if (process.env.NODE_ENV === "development") {
+      return "http://localhost:3000"
+    }
+
+    // Last resort fallback
+    return "https://gen-playlist-git-dev-kayvin-team.vercel.app"
+  }
+
+  const baseUrl = getBaseUrl()
+
+  console.log("🔗 OAuth redirect URL:", `${baseUrl}/auth/callback?next=/generate`)
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "spotify",

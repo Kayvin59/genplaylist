@@ -1,5 +1,5 @@
 import Welcome from "@/components/Welcome"
-import UrlInput from "@/components/urlInput"
+import MusicUrlInput from "@/components/music-url-input"
 import { createClient } from "@/utils/supabase/server"
 import { redirect } from "next/navigation"
 
@@ -26,7 +26,7 @@ export default async function GeneratePage() {
   return (
     <div className="w-full flex flex-col items-center justify-center">
       <Welcome user={user} spotifyData={spotifyData} />
-      <UrlInput />
+      <MusicUrlInput />
     </div>
   )
 }
