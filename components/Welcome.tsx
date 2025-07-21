@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { WelcomeProps } from "@/types"
 import { UserIcon } from "lucide-react"
+import Image from "next/image"
 
 
 export default function Welcome({ user, spotifyData }: WelcomeProps) {
@@ -15,7 +16,7 @@ export default function Welcome({ user, spotifyData }: WelcomeProps) {
       <CardHeader className="text-center">
         <div className="flex items-center justify-center mb-4">
           {spotifyData?.avatar_url ? (
-            <img
+            <Image
               src={spotifyData.avatar_url || "/placeholder.svg"}
               alt="Profile"
               className="w-16 h-16 rounded-full border-2 border-green-500"

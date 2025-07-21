@@ -21,7 +21,7 @@ export default function WaitlistDialog() {
 				<DialogHeader className="mb-2">
 					<DialogTitle>Join the waitlist!</DialogTitle>
 					<DialogDescription>
-						Enter your details. Click submit when you're done.
+						Enter your details. Click submit when you&apos;re done.
 					</DialogDescription>
 				</DialogHeader>
 				<WaitlistForm />
