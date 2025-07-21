@@ -3,6 +3,7 @@ import Header from "@/components/Header";
 import { Analytics } from "@vercel/analytics/react";
 import type { Metadata } from "next";
 import { Roboto } from "next/font/google";
+import React from "react";
 import "./globals.css";
 
 const roboto = Roboto({

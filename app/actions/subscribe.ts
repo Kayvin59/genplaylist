@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/utils/supabase/server'
-import { cookies } from 'next/headers'
+// import { cookies } from 'next/headers'
 import { z } from 'zod'
 
 const schema = z.object({
@@ -9,7 +9,7 @@ const schema = z.object({
 })
 
 async function saveEmail(email: string) {
-  const cookieStore = cookies()
+  // const cookieStore = cookies()
   const supabase = createClient()
 
   try {

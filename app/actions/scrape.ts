@@ -44,9 +44,6 @@ const MusicDataSchema = z.object({
     .describe("Type of content"),
 })
 
-// Progress callback type for user feedback
-export type ProgressCallback = (step: "scraping" | "analyzing" | "processing", message: string) => void
-
 
 export async function musicScraper(url: string ): Promise<rawMusicScraperResult> {
   // rate limiting (10 req/min)

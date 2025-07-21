@@ -106,7 +106,7 @@ export default function WaitlistForm() {
 						</span>
 						<span>Your email has been added to the GenPlaylist waitlist.</span>
 						<span>
-							We're thrilled to have you on board. Watch your inbox for exciting
+							We&apos;re thrilled to have you on board. Watch your inbox for exciting
 							updates!
 						</span>
 					</div>
