@@ -1,3 +1,5 @@
+import Footer from "@/components/Footer";
+import Header from "@/components/Header";
 import { Analytics } from "@vercel/analytics/react";
 import type { Metadata } from "next";
 import { Roboto } from "next/font/google";
@@ -21,11 +23,19 @@ export default function RootLayout({
 	children: React.ReactNode;
 }) {
 	return (
-		<html lang="en">
-			<body className={`${roboto.className}`}>
-				{children}
-				<Analytics />
-			</body>
-		</html>
+		<>
+			<html lang="en">
+				<body className={`${roboto.className}`}>
+					<div className="flex max-w-6xl mx-auto flex-col items-center min-h-screen">
+						<Header />
+						<main className="flex flex-1 w-full flex-col items-center justify-start text-center py-12 px-6">
+							{children}
+							<Analytics />
+						</main>
+						<Footer />
+					</div>
+				</body>
+			</html>
+		</>
 	);
 }

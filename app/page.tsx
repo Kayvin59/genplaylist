@@ -1,21 +1,13 @@
-import Footer from "@/components/Footer";
-import Header from "@/components/Header";
-import WaitlistDialog from "@/components/waitlist/WaitlistDialog";
+import LoginButton from "@/components/LoginButton";
 
 export default function Home() {
 	return (
-		<div className="flex max-w-6xl mx-auto flex-col items-center min-h-screen">
-			<Header />
-			<main className="flex flex-1 w-full flex-col items-center justify-start text-center py-12 px-6">
-				<h1 className="mb-10 text-5xl sm:text-6xl font-bold">
-					Generate playlist from your favorites music websites.
-				</h1>
-				<h2 className="mb-10 text-lg sm:text-xl text-secondary-foreground font-bold">
-					Share your link and get a playlist, on any streaming platform.
-				</h2>
-				<WaitlistDialog />
-			</main>
-			<Footer />
-		</div>
+		<>
+			<h1 className="mb-16 text-6xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 bg-clip-text text-transparent">
+				Generate playlist from your favorites music websites.
+			</h1>
+			<p className="text-lg text-gray-600 max-w-2xl mx-auto mb-14">Connect your Spotify account and transform any music URL into a curated playlist. We extract the tracks you love.</p>			
+			<LoginButton />
+		</>
 	);
 }
