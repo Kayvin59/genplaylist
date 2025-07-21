@@ -8,7 +8,7 @@ export async function signInWithSpotify() {
   const supabase = await createClient()
 
   const getBaseUrl = () => {
-    // Check for explicit site URL (production)
+    // Check for explicit site URL (production & preview)
     if (process.env.NEXT_PUBLIC_SITE_URL) {
       return process.env.NEXT_PUBLIC_SITE_URL
     }
