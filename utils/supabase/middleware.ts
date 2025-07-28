@@ -1,70 +1,45 @@
-import { createServerClient } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/server'
+import { createServerClient } from "@supabase/ssr"
+import { type NextRequest, NextResponse } from "next/server"
 
 export async function updateSession(request: NextRequest) {
-  let response = NextResponse.next({
+  const response = NextResponse.next({
     request: {
       headers: request.headers,
     },
   })
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (!supabaseUrl || !supabaseKey) {
-    console.error('updateSession: Supabase URL or Key is missing')
-    return response
-  }
-
   const supabase = createServerClient(
-    supabaseUrl,
-    supabaseKey,
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         getAll() {
-          return request.cookies.getAll().map((cookie) => ({
-            name: cookie.name,
-            value: cookie.value,
-          }))
+          return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, ...options }) => {
-            request.cookies.set({
-              name,
-              value,
-              ...options,
-            })
-            response.cookies.set({
-              name,
-              value,
-              ...options,
-            })
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
+          // The request and response cookies need to be updated
+          // in the same way.
+          cookiesToSet.forEach(({ name, value, options }) => {
+            // Pass a single object to request.cookies.set
+            request.cookies.set({ name, value, ...options })
+            response.cookies.set({ name, value, ...options })
           })
         },
       },
-    }
+    },
   )
 
-  // IMPORTANT: Avoid writing any logic between createServerClient and
-  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
-
+  // IMPORTANT: The `auth.getUser()` method must be called to refresh the session.
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Adjust protected routes as needed
-  const protectedRoutes = ['/generate']
-
-  if (!user && protectedRoutes.some(route => request.nextUrl.pathname.startsWith(route))) {
-    return NextResponse.redirect(new URL('/', request.url))
+  // If the user is not logged in and is trying to access a protected route,
+  // redirect them to the home page.
+  if (!user && request.nextUrl.pathname.startsWith("/generate")) {
+    const url = new URL("/", request.url)
+    return NextResponse.redirect(url)
   }
 
-  // IMPORTANT: You *must* return the response object as it is.
   return response
 }
