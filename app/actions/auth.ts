@@ -8,7 +8,7 @@ export async function signInWithSpotify() {
   const supabase = await createClient()
 
 
-  const redirectUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
+  const redirectUrl = "https://gen-playlist-git-dev-kayvin-team.vercel.app/auth/callback"
 
   console.log("OAuth redirect URL:", redirectUrl)
 
