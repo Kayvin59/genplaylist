@@ -7,34 +7,31 @@ import { redirect } from "next/navigation"
 export async function signInWithSpotify() {
   const supabase = await createClient()
 
-  const getBaseUrl = () => {
-    // Check for explicit site URL (production & preview)
-    if (process.env.NEXT_PUBLIC_SITE_URL) {
-      return process.env.NEXT_PUBLIC_SITE_URL
-    }
+  const getURL = () => {
+    let url =
+      process?.env?.NEXT_PUBLIC_SITE_URL ??
+      process?.env?.NEXT_PUBLIC_VERCEL_URL ??
+      "http://localhost:3000/"
 
-    // Check for Vercel URL (preview deployments)
-    if (process.env.VERCEL_URL) {
-      return `https://${process.env.VERCEL_URL}`
-    }
+    // Make sure to include `https://` when not localhost.
+    url = url.startsWith("http") ? url : `https://${url}`
 
-    // Development fallback
-    if (process.env.NODE_ENV === "development") {
-      return "http://localhost:3000"
-    }
+    // Make sure to include a trailing `/`.
+    url = url.endsWith("/") ? url : `${url}/`
 
-    // Last resort fallback
-    return "https://gen-playlist-git-dev-kayvin-team.vercel.app"
+    return url
   }
 
-  const baseUrl = getBaseUrl()
+  const baseUrl = getURL()
+  const redirectUrl = `${baseUrl}auth/callback`
 
-  console.log("OAuth redirect URL:", `${baseUrl}/auth/callback?next=/generate`)
+
+  console.log("OAuth redirect URL:", redirectUrl)
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "spotify",
     options: {
-      redirectTo: "https://gen-playlist-git-dev-kayvin-team.vercel.app/auth/callback",
+      redirectTo: redirectUrl,
       scopes: "user-read-email user-read-private playlist-modify-public playlist-modify-private",
     },
   })
