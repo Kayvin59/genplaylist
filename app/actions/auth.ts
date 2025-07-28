@@ -7,24 +7,8 @@ import { redirect } from "next/navigation"
 export async function signInWithSpotify() {
   const supabase = await createClient()
 
-  const getURL = () => {
-    let url =
-      process?.env?.NEXT_PUBLIC_SITE_URL ??
-      process?.env?.NEXT_PUBLIC_VERCEL_URL ??
-      "http://localhost:3000/"
 
-    // Make sure to include `https://` when not localhost.
-    url = url.startsWith("http") ? url : `https://${url}`
-
-    // Make sure to include a trailing `/`.
-    url = url.endsWith("/") ? url : `${url}/`
-
-    return url
-  }
-
-  const baseUrl = getURL()
-  const redirectUrl = `${baseUrl}auth/callback`
-
+  const redirectUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
 
   console.log("OAuth redirect URL:", redirectUrl)
 
