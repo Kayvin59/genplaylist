@@ -34,7 +34,7 @@ export async function signInWithSpotify() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "spotify",
     options: {
-      redirectTo: `${baseUrl}/auth/callback?next=/generate`,
+      redirectTo: "https://gen-playlist-git-dev-kayvin-team.vercel.app/auth/callback",
       scopes: "user-read-email user-read-private playlist-modify-public playlist-modify-private",
     },
   })
