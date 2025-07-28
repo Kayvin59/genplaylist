@@ -9,6 +9,14 @@ export async function GET(request: Request) {
   const errorCode = searchParams.get("error_code")
   const errorDescription = searchParams.get("error_description")
 
+  // TODO:REMOVE TEST
+  console.log("🔄 CALLBACK ROUTE HIT!", {
+    url: request.url,
+    code: code ? "present" : "missing",
+    origin,
+    timestamp: new Date().toISOString(),
+  })
+
   // Handle OAuth errors
   if (error) {
     console.error("OAuth callback error:", { error, errorCode, errorDescription })
@@ -25,11 +33,12 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = await createClient()
-
+      console.log("🔄 Exchanging code for session...")
     try {
       const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
 
       if (!exchangeError) {
+        console.log("✅ Session created successfully, redirecting to:", next)
         // Successful authentication - redirect to intended page
         const forwardedHost = request.headers.get("x-forwarded-host")
         const isLocalEnv = process.env.NODE_ENV === "development"

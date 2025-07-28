@@ -29,7 +29,7 @@ export async function signInWithSpotify() {
 
   const baseUrl = getBaseUrl()
 
-  console.log("🔗 OAuth redirect URL:", `${baseUrl}/auth/callback?next=/generate`)
+  console.log("OAuth redirect URL:", `${baseUrl}/auth/callback?next=/generate`)
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "spotify",
