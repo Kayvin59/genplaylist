@@ -6,11 +6,6 @@ export async function GET(request: Request) {
   const code = searchParams.get("code")
   const error = searchParams.get("error")
 
-  console.log("🔄 CALLBACK HIT:", {
-    url: request.url,
-    hasCode: !!code,
-    hasError: !!error,
-  })
 
   if (error) {
     return NextResponse.redirect(`${origin}/auth/error?message=${encodeURIComponent(error)}`)
