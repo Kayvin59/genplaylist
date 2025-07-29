@@ -13,7 +13,7 @@ export async function signInWithSpotify() {
 
   const isProduction = process.env.NODE_ENV === "production";
   const baseUrl = isProduction 
-    ? "https://gen-playlist-git-dev-kayvin-team.vercel.app" 
+    ? "https://gen-playlist-git-main-kayvin-team.vercel.app" 
     : "http://localhost:3000";
 
   const redirectUrl = `${baseUrl}/auth/callback`;
