@@ -29,7 +29,13 @@ export async function updateSession(request: NextRequest) {
     },
   )
 
+  // Handle auth callback route
+  if (request.nextUrl.pathname === "/auth/callback") {
+    await supabase.auth.getSession();
+  }
+
   // IMPORTANT: The `auth.getUser()` method must be called to refresh the session.
+  // Existing user check
   const {
     data: { user },
   } = await supabase.auth.getUser()

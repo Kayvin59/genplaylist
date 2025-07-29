@@ -7,8 +7,16 @@ import { redirect } from "next/navigation"
 export async function signInWithSpotify() {
   const supabase = await createClient()
 
+/*   const baseUrl = process.env.VERCEL_URL 
+  ? `https://${process.env.VERCEL_URL}`
+  : 'http://localhost:3000'; */
 
-  const redirectUrl = "https://gen-playlist-git-dev-kayvin-team.vercel.app/auth/callback"
+  const isProduction = process.env.NODE_ENV === "production";
+  const baseUrl = isProduction 
+    ? "https://gen-playlist-git-dev-kayvin-team.vercel.app" 
+    : "http://localhost:3000";
+
+  const redirectUrl = `${baseUrl}/auth/callback`;
 
   console.log("OAuth redirect URL:", redirectUrl)
 
@@ -26,7 +34,6 @@ export async function signInWithSpotify() {
   }
 
   if (data.url) {
-    // revalidatePath('/', 'layout')
     redirect(data.url)
   }
 }
