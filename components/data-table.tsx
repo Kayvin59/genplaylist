@@ -73,7 +73,7 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
       })
 
       if (result.needsAuth) {
-        router.push("/auth/login")
+        router.push("/")
         return
       }
 
