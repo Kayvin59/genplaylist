@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrapedDataTableProps, UITrack } from "@/types"
-import { AlbumIcon, Check, ChevronLeft, ChevronRight, ExternalLink, List, Loader2, Music, X } from "lucide-react"
+import { AlbumIcon, AlertCircle, Check, ChevronLeft, ChevronRight, ExternalLink, List, Loader2, Music } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
@@ -30,7 +30,6 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
 
   const router = useRouter()
 
-  // Convert data to tracks format
   useEffect(() => {
     const convertedTracks = data.tracks.map((track) => ({
       title: track.title,
@@ -39,10 +38,11 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
       selected: false,
     }))
     setTracks(convertedTracks)
-    setPlaylistName(`${data.title} Playlist`)
-  }, [data])  
-  
-  // Pagination
+    // Truncate default name to avoid very long titles
+    const truncatedTitle = data.title.length > 40 ? data.title.slice(0, 40) + "..." : data.title
+    setPlaylistName(`${truncatedTitle} Playlist`)
+  }, [data])
+
   const totalPages = Math.ceil(tracks.length / ITEMS_PER_PAGE)
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
   const endIndex = startIndex + ITEMS_PER_PAGE
@@ -80,7 +80,7 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
       if (result.success) {
         setPlaylistResult({
           success: true,
-          message: `Playlist "${playlistName}" created successfully! Added ${result.tracksAdded}/${result.totalTracks} tracks.`,
+          message: `Added ${result.tracksAdded} of ${result.totalTracks} tracks to "${playlistName}".`,
           playlistUrl: result.playlistUrl,
           playlistId: result.playlistId,
         })
@@ -94,43 +94,43 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
       console.error("Failed to create playlist:", error)
       setPlaylistResult({
         success: false,
-        message: "An unexpected error occurred. Please try again.",
+        message: "Something went wrong. Please try again.",
       })
     } finally {
       setIsCreatingPlaylist(false)
     }
   }
 
-  // Success state (same as before)
+  // Success state
   if (playlistResult?.success) {
     return (
-      <Card className="w-full shadow-lg border border-gray-200">
+      <Card className="w-full border border-border">
         <CardContent className="p-8 text-center space-y-4">
           <div className="flex justify-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-              <Check className="w-8 h-8 text-green-600" />
+            <div className="w-14 h-14 bg-green-50 border border-green-200 rounded-full flex items-center justify-center">
+              <Check className="w-7 h-7 text-green-600" />
             </div>
           </div>
           <div>
-            <h3 className="text-xl font-semibold text-green-800 mb-6">🎉 Playlist Created!</h3>
-            <p className="text-gray-600 mb-4">{playlistResult.message}</p>
+            <h3 className="text-lg font-semibold text-foreground mb-1">Playlist created</h3>
+            <p className="text-sm text-muted-foreground mb-6">{playlistResult.message}</p>
             {playlistResult.playlistUrl && (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <a
                   href={playlistResult.playlistUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 mb-4 bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                  className="inline-flex items-center gap-2 bg-[#1DB954] hover:bg-[#1aa34a] text-white px-6 py-2.5 rounded-lg font-medium transition-colors text-sm"
                 >
                   <Music className="w-4 h-4" />
                   Open in Spotify
-                  <ExternalLink className="w-4 h-4" />
+                  <ExternalLink className="w-3.5 h-3.5" />
                 </a>
-                <div className="mb-4">
+                <div>
                   <iframe
                     src={`https://open.spotify.com/embed/playlist/${playlistResult.playlistId}`}
                     width="100%"
-                    height="400"
+                    height="380"
                     frameBorder="0"
                     allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                     loading="lazy"
@@ -142,13 +142,14 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
           </div>
           <Button
             variant="outline"
+            size="sm"
             onClick={() => {
               setPlaylistResult(null)
               setTracks(tracks.map((track) => ({ ...track, selected: false })))
             }}
-            className="mt-4"
+            className="mt-2"
           >
-            Create Another Playlist
+            Create another playlist
           </Button>
         </CardContent>
       </Card>
@@ -156,62 +157,43 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
   }
 
   return (
-    <Card className="w-full border border-gray-500">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 mb-4">
-          <Music className="w-5 h-5 text-blue-600" />
+    <Card className="w-full border border-border">
+      <CardHeader className="pb-4">
+        <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+          <Music className="w-4 h-4 text-muted-foreground" />
           {data.title}
         </CardTitle>
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex gap-2 flex-wrap">
-            <Badge variant="secondary">
-              <List className="w-3 h-3 mr-1" />
-              {data.tracks.length} tracks
-            </Badge>
-            <Badge variant="outline">
-              <AlbumIcon className="w-3 h-3 mr-1" />
-              {data.albums.length} albums
-            </Badge>
-            <Badge
-              className={`${data.confidence >= 0.8 ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}
-            >
-              {Math.round(data.confidence * 100)}% confidence
-            </Badge>
-          </div>
-          <Badge variant="outline">{selectedTracks.length} selected</Badge>
-        </div>
       </CardHeader>
 
-      <CardContent className="space-y-6">
-        {/* Playlist Name Input */}
-        <div className="space-y-2 text-left">
-          <Label htmlFor="playlist-name">Playlist Name</Label>
+      <CardContent className="space-y-5">
+        {/* Playlist Name */}
+        <div className="space-y-1.5">
+          <Label htmlFor="playlist-name" className="text-sm font-medium">Playlist name</Label>
           <Input
             id="playlist-name"
             value={playlistName}
             onChange={(e) => setPlaylistName(e.target.value)}
-            placeholder="Enter playlist name"
-            className="max-w-md"
+            placeholder="My playlist"
+            className="max-w-sm"
           />
         </div>
 
-
-        {/* Tabs for Tracks and Albums */}
+        {/* Tabs */}
         <Tabs defaultValue="tracks" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="tracks">
-              <List className="w-4 h-4 mr-2" />
+            <TabsTrigger value="tracks" className="text-sm">
+              <List className="w-3.5 h-3.5 mr-1.5" />
               Tracks ({data.tracks.length})
             </TabsTrigger>
-            <TabsTrigger value="albums">
-              <AlbumIcon className="w-4 h-4 mr-2" />
+            <TabsTrigger value="albums" className="text-sm">
+              <AlbumIcon className="w-3.5 h-3.5 mr-1.5" />
               Albums ({data.albums.length})
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="tracks" className="space-y-4">
-            {/* Selection Controls */}
-            <div className="flex items-center justify-between">
+          <TabsContent value="tracks" className="space-y-4 mt-4">
+            {/* Controls */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="select-all"
@@ -219,139 +201,157 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
                   onCheckedChange={handleSelectAll}
                   disabled={tracks.length === 0}
                 />
-                <label htmlFor="select-all" className="text-sm font-medium cursor-pointer">
-                  Select All ({tracks.length} tracks)
+                <label htmlFor="select-all" className="text-sm cursor-pointer select-none">
+                  Select all ({tracks.length})
                 </label>
               </div>
-              <Button
-                onClick={handleCreatePlaylist}
-                disabled={selectedTracks.length === 0 || isCreatingPlaylist || !playlistName.trim()}
-                className="bg-green-500 hover:bg-green-600"
-              >
-                {isCreatingPlaylist ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  `🎵 Create Playlist (${selectedTracks.length})`
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                {selectedTracks.length > 0 && (
+                  <Badge variant="secondary" className="text-xs">
+                    {selectedTracks.length} selected
+                  </Badge>
                 )}
-              </Button>
+                <Button
+                  onClick={handleCreatePlaylist}
+                  disabled={selectedTracks.length === 0 || isCreatingPlaylist || !playlistName.trim()}
+                  className="bg-[#1DB954] hover:bg-[#1aa34a] text-white transition-colors flex-1 sm:flex-none"
+                  size="sm"
+                >
+                  {isCreatingPlaylist ? (
+                    <>
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <Music className="mr-1.5 h-3.5 w-3.5" />
+                      Create playlist
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
 
-            {/* Error Message */}
+            {/* Error */}
             {playlistResult && !playlistResult.success && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-                <div className="flex items-center gap-2">
-                  <X className="w-4 h-4 text-red-600" />
-                  <p className="text-sm font-medium text-red-800">{playlistResult.message}</p>
-                </div>
+              <div className="flex items-start gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                <p className="text-sm font-medium text-red-800">{playlistResult.message}</p>
               </div>
             )}
 
-            {/* Tracks Table */}
-            <div className="space-y-4">
-              <div className="border rounded-md">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">Select</TableHead>
-                      <TableHead>Artist</TableHead>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Album</TableHead>
+            {/* Table */}
+            <div className="border border-border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="w-12"></TableHead>
+                    <TableHead className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Artist</TableHead>
+                    <TableHead className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Title</TableHead>
+                    <TableHead className="text-xs font-medium uppercase tracking-wider text-muted-foreground hidden sm:table-cell">Album</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {currentTracks.map((track, index) => (
+                    <TableRow
+                      key={startIndex + index}
+                      className={`transition-colors cursor-pointer ${track.selected ? "bg-green-50/50" : "hover:bg-muted/30"}`}
+                      onClick={() => handleTrackSelect(index, !track.selected)}
+                    >
+                      <TableCell className="pr-0" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={track.selected}
+                          onCheckedChange={(checked) => handleTrackSelect(index, checked as boolean)}
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium text-sm">{track.artist}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{track.title}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground hidden sm:table-cell">{track.album || "—"}</TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {currentTracks.map((track, index) => (
-                      <TableRow key={startIndex + index}>
-                        <TableCell>
-                          <Checkbox
-                            checked={track.selected}
-                            onCheckedChange={(checked) => handleTrackSelect(index, checked as boolean)}
-                          />
-                        </TableCell>
-                        <TableCell className="font-medium">{track.artist}</TableCell>
-                        <TableCell>{track.title}</TableCell>
-                        <TableCell className="text-gray-500">{track.album || "—"}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-gray-500">
-                    Showing {startIndex + 1} to {Math.min(endIndex, tracks.length)} of {tracks.length} tracks
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                      Previous
-                    </Button>
-                    <div className="flex items-center space-x-1">
-                      {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                        const page = i + 1
-                        return (
-                          <Button
-                            key={page}
-                            variant={currentPage === page ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setCurrentPage(page)}
-                            className="w-8 h-8 p-0"
-                          >
-                            {page}
-                          </Button>
-                        )
-                      })}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                    >
-                      Next
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
+                  ))}
+                </TableBody>
+              </Table>
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between pt-1">
+                <p className="text-xs text-muted-foreground">
+                  {startIndex + 1}–{Math.min(endIndex, tracks.length)} of {tracks.length}
+                </p>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setCurrentPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="h-8 px-2"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    let page: number
+                    if (totalPages <= 5) {
+                      page = i + 1
+                    } else if (currentPage <= 3) {
+                      page = i + 1
+                    } else if (currentPage >= totalPages - 2) {
+                      page = totalPages - 4 + i
+                    } else {
+                      page = currentPage - 2 + i
+                    }
+                    return (
+                      <Button
+                        key={page}
+                        variant={currentPage === page ? "default" : "ghost"}
+                        size="sm"
+                        onClick={() => setCurrentPage(page)}
+                        className="w-8 h-8 p-0 text-xs"
+                      >
+                        {page}
+                      </Button>
+                    )
+                  })}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="h-8 px-2"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </TabsContent>
 
-          <TabsContent value="albums" className="space-y-4">
+          <TabsContent value="albums" className="space-y-4 mt-4">
             {data.albums.length > 0 ? (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {data.albums.map((album, index) => (
-                  <Card key={index} className="p-4">
-                    <div className="space-y-2">
-                      <h4 className="font-semibold text-gray-800">{album.album}</h4>
-                      <p className="text-sm text-gray-600">by {album.artist}</p>
+                  <div key={index} className="p-4 border border-border rounded-lg space-y-1.5">
+                    <h4 className="font-medium text-sm text-foreground">{album.album}</h4>
+                    <p className="text-xs text-muted-foreground">by {album.artist}</p>
+                    <div className="flex gap-1.5 pt-1">
                       {album.year && (
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs px-1.5 py-0">
                           {album.year}
                         </Badge>
                       )}
                       {album.trackCount && (
-                        <Badge variant="outline" className="text-xs ml-2">
+                        <Badge variant="outline" className="text-xs px-1.5 py-0">
                           {album.trackCount} tracks
                         </Badge>
                       )}
                     </div>
-                  </Card>
+                  </div>
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-500">
-                <AlbumIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                <p>No albums found in this content</p>
+              <div className="text-center py-8 text-muted-foreground">
+                <AlbumIcon className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                <p className="text-sm">No albums found in this content</p>
               </div>
             )}
           </TabsContent>

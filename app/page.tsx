@@ -2,12 +2,14 @@ import LoginButton from "@/components/LoginButton";
 
 export default function Home() {
 	return (
-		<>
-			<h1 className="mb-16 text-6xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 bg-clip-text text-transparent">
-				Generate playlist from your favorites music websites.
+		<div className="flex flex-col items-center justify-center max-w-2xl mx-auto mt-8 sm:mt-16">
+			<h1 className="mb-4 text-4xl sm:text-5xl font-bold tracking-tight text-foreground">
+				Paste a link.<br />Get a playlist.
 			</h1>
-			<p className="text-lg text-gray-600 max-w-2xl mx-auto mb-14">Connect your Spotify account and transform any music URL into a curated playlist. We extract the tracks you love.</p>			
+			<p className="text-base text-muted-foreground max-w-lg mx-auto mb-10">
+				Drop any music article, blog post, or Reddit thread — we extract every track and create your Spotify playlist in seconds.
+			</p>
 			<LoginButton />
-		</>
+		</div>
 	);
 }
