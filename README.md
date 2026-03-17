@@ -1,48 +1,90 @@
 [![Logo](public/genplaylist2.svg)](https://gen-playlist.vercel.app/)
 
----
+# GenPlaylist
 
-Easily generate playlist, on any streaming platform, with Genplaylist, designed to facilitate playlist creation from any url and save you valuable time.
+**Paste a link. Get a playlist.**
 
----
+Found an amazing "Best Albums of 2024" list? A Reddit thread full of hidden gems? A music blog with 50 tracks you want to save? GenPlaylist scrapes any music URL, extracts every track, and builds your Spotify playlist in seconds — no more copy-pasting track names one by one.
 
-## Features
+## How It Works
 
-- [] Generate Spotify playlist
-- [] Generate Apple Music playlist
-- [] Generate Deezer playlist
+1. **Sign in** with your Spotify account
+2. **Paste** any URL containing music (blog posts, articles, Reddit threads, tracklists)
+3. **Review** the extracted tracks — select or deselect what you want
+4. **Create** your playlist on Spotify with one click
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Framework | Next.js 14 (App Router, Server Actions) |
+| Auth | Supabase Auth + Spotify OAuth |
+| Database | Supabase (PostgreSQL) |
+| Scraping | Cheerio (built-in), Firecrawl (optional fallback) |
+| AI | OpenAI GPT-4o-mini via Vercel AI SDK |
+| UI | Tailwind CSS + shadcn/ui + Radix |
+| Deployment | Vercel |
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18+
+- pnpm
+- A [Supabase](https://supabase.com) project with Spotify OAuth enabled
+- A [Spotify Developer](https://developer.spotify.com) app
+- An [OpenAI](https://platform.openai.com) API key
+
+### Setup
+
+1. Clone the repo and install dependencies:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/your-username/genplaylist.git
+cd genplaylist
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Copy the environment file and fill in your keys:
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+```bash
+cp .env.example .env.local
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+3. Run the development server:
 
-## Learn More
+```bash
+pnpm dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Open [http://localhost:3000](http://localhost:3000) to get started.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Supabase Configuration
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+1. Create a new Supabase project
+2. Enable **Spotify** as an OAuth provider under Authentication > Providers
+3. Set the redirect URL in your Spotify Developer app to: `<your-supabase-url>/auth/v1/callback`
+4. Add your Supabase URL and anon key to `.env.local`
 
-## Deploy on Vercel
+## Features
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- [x] Spotify OAuth login
+- [x] URL scraping with AI-powered track extraction
+- [x] Track selection with confidence scoring
+- [x] Spotify playlist creation
+- [x] Rate limiting and input validation
+- [ ] Apple Music support
+- [ ] Deezer support
+- [ ] Payment/subscription system
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+## Environment Variables
+
+See [`.env.example`](.env.example) for the full list of required and optional variables.
+
+## Deployment
+
+Deploy to [Vercel](https://vercel.com) — set your environment variables in the Vercel dashboard and you're good to go.
+
+## License
+
+MIT

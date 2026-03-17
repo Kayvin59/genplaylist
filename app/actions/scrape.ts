@@ -4,11 +4,12 @@ import { checkRateLimit, validateUrl } from "@/lib/security"
 import { rawMusicScraperResult } from "@/types"
 import { openai } from "@ai-sdk/openai"
 import { generateObject } from "ai"
+import * as cheerio from "cheerio"
 import { z } from "zod"
 
-// Firecrawl configuration
+// Firecrawl configuration (optional fallback)
 const FIRECRAWL_API_KEY = process.env.FIRECRAWL_API_KEY
-const FIRECRAWL_BASE_URL = "https://api.firecrawl.dev/v0"
+const FIRECRAWL_BASE_URL = "https://api.firecrawl.dev/v1"
 
 // AI schema for extracting music data
 const MusicDataSchema = z.object({
@@ -44,9 +45,119 @@ const MusicDataSchema = z.object({
     .describe("Type of content"),
 })
 
+/**
+ * Built-in scraper using fetch + Cheerio (free, no API key needed).
+ * Extracts main text content from a webpage as clean text.
+ */
+async function scrapeWithCheerio(url: string): Promise<{ success: boolean; content?: string; error?: string }> {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+      },
+      signal: AbortSignal.timeout(15000),
+    })
 
-export async function musicScraper(url: string ): Promise<rawMusicScraperResult> {
-  // rate limiting (10 req/min)
+    if (!response.ok) {
+      if (response.status === 403) {
+        return { success: false, error: "Website blocks automated access. Try a different URL." }
+      }
+      return { success: false, error: `Failed to fetch page (HTTP ${response.status})` }
+    }
+
+    const html = await response.text()
+    const $ = cheerio.load(html)
+
+    // Remove non-content elements
+    $("script, style, nav, footer, header, aside, iframe, noscript, svg, [role='navigation'], [role='banner'], .ad, .ads, .advertisement, .sidebar, .menu, .cookie-banner").remove()
+
+    // Try to find main content area
+    const mainSelectors = ["article", "main", "[role='main']", ".post-content", ".entry-content", ".article-body", ".content"]
+    let mainContent = ""
+
+    for (const selector of mainSelectors) {
+      const el = $(selector)
+      if (el.length > 0) {
+        mainContent = el.text()
+        break
+      }
+    }
+
+    // Fallback to body if no main content area found
+    if (!mainContent || mainContent.trim().length < 50) {
+      mainContent = $("body").text()
+    }
+
+    // Clean up whitespace: collapse multiple spaces/newlines
+    const cleaned = mainContent
+      .replace(/\s+/g, " ")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim()
+
+    if (cleaned.length < 50) {
+      return { success: false, error: "No meaningful content found on this page" }
+    }
+
+    return { success: true, content: cleaned }
+  } catch (error: any) {
+    if (error.name === "AbortError" || error.name === "TimeoutError") {
+      return { success: false, error: "Request timed out" }
+    }
+    return { success: false, error: `Failed to scrape: ${error.message}` }
+  }
+}
+
+/**
+ * Scrape using Firecrawl API v1 (optional, used when FIRECRAWL_API_KEY is set).
+ */
+async function scrapeWithFirecrawl(url: string): Promise<{ success: boolean; content?: string; error?: string }> {
+  try {
+    const response = await fetch(`${FIRECRAWL_BASE_URL}/scrape`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${FIRECRAWL_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        url: url.trim(),
+        formats: ["markdown"],
+        onlyMainContent: true,
+        waitFor: 3000,
+      }),
+      signal: AbortSignal.timeout(30000),
+    })
+
+    if (!response.ok) {
+      if (response.status === 403) {
+        return { success: false, error: "Website blocks automated access." }
+      }
+      if (response.status === 429) {
+        return { success: false, error: "Firecrawl rate limit exceeded." }
+      }
+      return { success: false, error: `Firecrawl error (HTTP ${response.status})` }
+    }
+
+    const data = await response.json()
+    const markdown = data.data?.markdown
+
+    if (!markdown || markdown.trim().length < 50) {
+      return { success: false, error: "No meaningful content found on this page" }
+    }
+
+    return { success: true, content: markdown }
+  } catch (error: any) {
+    if (error.name === "AbortError" || error.name === "TimeoutError") {
+      return { success: false, error: "Firecrawl request timed out" }
+    }
+    return { success: false, error: `Firecrawl error: ${error.message}` }
+  }
+}
+
+export async function musicScraper(url: string): Promise<rawMusicScraperResult> {
+  // Rate limiting (10 req/min)
   const rateLimitCheck = checkRateLimit(`scrape_global`, 10, 60000)
   if (!rateLimitCheck.allowed) {
     return {
@@ -62,73 +173,37 @@ export async function musicScraper(url: string ): Promise<rawMusicScraperResult>
     return { success: false, error: urlValidation.error, errorType: "validation" }
   }
 
-  // Check API key
-  if (!FIRECRAWL_API_KEY) {
-    return { success: false, error: "Firecrawl API key not configured" }
-  }
-
   if (!process.env.OPENAI_API_KEY) {
     return { success: false, error: "OpenAI API key not configured", errorType: "general" }
   }
 
   try {
+    // Step 1: Scrape website content
+    // Use Firecrawl if API key is available, otherwise use built-in Cheerio scraper
+    let scrapeResult: { success: boolean; content?: string; error?: string }
 
-    // Step 1: Scrape website content with Firecrawl
-    console.log("🔍 Scraping website content...")
-
-    const scrapeResponse = await fetch(`${FIRECRAWL_BASE_URL}/scrape`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${FIRECRAWL_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        url: url.trim(),
-        formats: ["markdown"], // Get clean markdown content
-        onlyMainContent: true, // Skip navigation, ads, etc.
-        includeTags: ["h1", "h2", "h3", "h4", "ul", "ol", "li", "p", "div", "span"],
-        excludeTags: ["nav", "footer", "aside", "script", "style", "header", "advertisement"],
-        waitFor: 3000, // Wait for dynamic content to load
-      }),
-    })
-
-    if (!scrapeResponse.ok) {
-      console.error("Firecrawl error:", scrapeResponse.status)
-
-      if (scrapeResponse.status === 403) {
-        return {
-          success: false,
-          error: "Website blocks automated access. Try manual input instead.",
-          errorType: "403_blocked",
-        }
+    if (FIRECRAWL_API_KEY) {
+      scrapeResult = await scrapeWithFirecrawl(url)
+      // Fall back to Cheerio if Firecrawl fails
+      if (!scrapeResult.success) {
+        console.log("Firecrawl failed, falling back to Cheerio scraper")
+        scrapeResult = await scrapeWithCheerio(url)
       }
-
-      if (scrapeResponse.status === 429) {
-        return {
-          success: false,
-          error: "Too many requests. Please wait a moment and try again.",
-          errorType: "rate_limit",
-        }
-      }
-
-      throw new Error(`Failed to scrape website: ${scrapeResponse.status}`)
-    }
-    console.log("scrapeResponse :", scrapeResponse)
-
-    const scrapeData = await scrapeResponse.json()
-    const markdownContent = scrapeData.data?.markdown
-    console.log("scrapeData :", scrapeData)
-    console.log("markdownContent :", markdownContent)
-
-    if (!markdownContent || markdownContent.trim().length < 50) {
-      return { success: false, error: "No meaningful content found on this page" }
+    } else {
+      scrapeResult = await scrapeWithCheerio(url)
     }
 
-    // Step 2: Analyze content with AI
-    console.log("🤖 Analyzing content with AI...")
+    if (!scrapeResult.success || !scrapeResult.content) {
+      return {
+        success: false,
+        error: scrapeResult.error || "Failed to scrape content",
+        errorType: scrapeResult.error?.includes("blocks") ? "403_blocked" : "general",
+      }
+    }
 
+    // Step 2: Analyze content with AI (GPT-4o-mini — fast and cost-effective)
     const result = await generateObject({
-      model: openai("gpt-4o"), // gpt-4o-mini
+      model: openai("gpt-4o-mini"),
       schema: MusicDataSchema,
       prompt: `Extract music data from this content. Focus on:
 
@@ -136,7 +211,7 @@ TRACKS: Individual songs with artist names
 ALBUMS: Full album mentions with artist
 
 EXTRACT FORMATS:
-• "Artist - Song" 
+• "Artist - Song"
 • "Artist: Song"
 • "Song by Artist"
 • Album: "Artist - Album Name (2024)"
@@ -144,8 +219,8 @@ EXTRACT FORMATS:
 IGNORE: News, non-music content, navigation
 
 Content:
-${markdownContent.slice(0, 6000)}`,
-      abortSignal: AbortSignal.timeout(20000)
+${scrapeResult.content.slice(0, 6000)}`,
+      abortSignal: AbortSignal.timeout(20000),
     })
 
     // Step 3: Validate and organize results
@@ -158,7 +233,7 @@ ${markdownContent.slice(0, 6000)}`,
           albums: [],
           confidence: result.object.confidence,
           isMusicContent: false,
-          contentType: result.object.contentType || "non-music",
+          contentType: result.object.contentType || "non_music",
         },
       }
     }
@@ -166,9 +241,7 @@ ${markdownContent.slice(0, 6000)}`,
     // Clean and validate extracted tracks
     const validTracks = result.object.tracks
       .filter((track) => {
-        // Must have both artist and title
         if (!track.artist?.trim() || !track.title?.trim()) return false
-        // Reasonable length limits
         if (track.artist.length < 2 || track.title.length < 2) return false
         if (track.artist.length > 100 || track.title.length > 200) return false
         return true
@@ -193,10 +266,6 @@ ${markdownContent.slice(0, 6000)}`,
         trackCount: album.trackCount,
       }))
 
-    console.log(
-      `✅ Found ${validTracks.length} valid tracks and ${validAlbums.length} albums with ${Math.round(result.object.confidence * 100)}% confidence`,
-    )
-
     return {
       success: true,
       data: {
@@ -209,7 +278,6 @@ ${markdownContent.slice(0, 6000)}`,
       },
     }
   } catch (error: any) {
-    console.error("Music scrape error:", error)
     if (error.name === "AbortError") {
       return { success: false, error: "Request timed out", errorType: "general" }
     }

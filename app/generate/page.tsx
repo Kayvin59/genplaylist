@@ -12,7 +12,7 @@ export default async function GeneratePage() {
   } = await supabase.auth.getUser()
 
   if (error || !user) {
-    redirect("/auth/login")
+    redirect("/")
   }
 
   // Extract Spotify data server-side
