@@ -7,16 +7,21 @@ import { redirect } from "next/navigation"
 export async function signInWithSpotify() {
   const supabase = await createClient()
 
-/*   const baseUrl = process.env.VERCEL_URL 
-  ? `https://${process.env.VERCEL_URL}`
-  : 'http://localhost:3000'; */
+  const getBaseUrl = () => {
+    // Always use localhost in development (even if NEXT_PUBLIC_SITE_URL is set)
+    if (process.env.NODE_ENV === "development") {
+      return "http://localhost:3000"
+    }
 
-  const isProduction = process.env.NODE_ENV === "production";
-  const baseUrl = isProduction 
-    ? "https://gen-playlist-git-main-kayvin-team.vercel.app" 
-    : "http://localhost:3000";
+    // Check for explicit site URL (production & preview)
+    if (process.env.NEXT_PUBLIC_SITE_URL) {
+      return process.env.NEXT_PUBLIC_SITE_URL
+    }
 
-  const redirectUrl = `${baseUrl}/auth/callback`;
+    // Check for Vercel URL (preview deployments)
+    if (process.env.VERCEL_URL) {
+      return `https://${process.env.VERCEL_URL}`
+    }
 
     // Last resort fallback
     return "https://gen-playlist.vercel.app"
@@ -27,7 +32,7 @@ export async function signInWithSpotify() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "spotify",
     options: {
-      redirectTo: redirectUrl,
+      redirectTo: `${baseUrl}/auth/callback?next=/generate`,
       scopes: "user-read-email user-read-private playlist-modify-public playlist-modify-private",
     },
   })
@@ -40,6 +45,8 @@ export async function signInWithSpotify() {
   if (data.url) {
     redirect(data.url)
   }
+
+  return
 }
 
 export async function signOut() {
