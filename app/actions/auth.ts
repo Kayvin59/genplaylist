@@ -43,9 +43,10 @@ export async function signInWithSpotify() {
   }
 
   if (data.url) {
-    // revalidatePath('/', 'layout')
     redirect(data.url)
   }
+
+  return
 }
 
 export async function signOut() {
