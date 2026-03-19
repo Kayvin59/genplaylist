@@ -24,12 +24,10 @@ export async function signInWithSpotify() {
     }
 
     // Last resort fallback
-    return "https://gen-playlist-git-dev-kayvin-team.vercel.app"
+    return "https://gen-playlist.vercel.app"
   }
 
   const baseUrl = getBaseUrl()
-
-  console.log("🔗 OAuth redirect URL:", `${baseUrl}/auth/callback?next=/generate`)
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "spotify",
