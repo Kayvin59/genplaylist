@@ -7,21 +7,16 @@ import { redirect } from "next/navigation"
 export async function signInWithSpotify() {
   const supabase = await createClient()
 
-  const getBaseUrl = () => {
-    // Check for explicit site URL (production & preview)
-    if (process.env.NEXT_PUBLIC_SITE_URL) {
-      return process.env.NEXT_PUBLIC_SITE_URL
-    }
+/*   const baseUrl = process.env.VERCEL_URL 
+  ? `https://${process.env.VERCEL_URL}`
+  : 'http://localhost:3000'; */
 
-    // Check for Vercel URL (preview deployments)
-    if (process.env.VERCEL_URL) {
-      return `https://${process.env.VERCEL_URL}`
-    }
+  const isProduction = process.env.NODE_ENV === "production";
+  const baseUrl = isProduction 
+    ? "https://gen-playlist-git-main-kayvin-team.vercel.app" 
+    : "http://localhost:3000";
 
-    // Development fallback
-    if (process.env.NODE_ENV === "development") {
-      return "http://localhost:3000"
-    }
+  const redirectUrl = `${baseUrl}/auth/callback`;
 
     // Last resort fallback
     return "https://gen-playlist.vercel.app"
@@ -32,7 +27,7 @@ export async function signInWithSpotify() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "spotify",
     options: {
-      redirectTo: `${baseUrl}/auth/callback?next=/generate`,
+      redirectTo: redirectUrl,
       scopes: "user-read-email user-read-private playlist-modify-public playlist-modify-private",
     },
   })
@@ -43,7 +38,6 @@ export async function signInWithSpotify() {
   }
 
   if (data.url) {
-    // revalidatePath('/', 'layout')
     redirect(data.url)
   }
 }
