@@ -8,6 +8,11 @@ export async function signInWithSpotify() {
   const supabase = await createClient()
 
   const getBaseUrl = () => {
+    // Always use localhost in development (even if NEXT_PUBLIC_SITE_URL is set)
+    if (process.env.NODE_ENV === "development") {
+      return "http://localhost:3000"
+    }
+
     // Check for explicit site URL (production & preview)
     if (process.env.NEXT_PUBLIC_SITE_URL) {
       return process.env.NEXT_PUBLIC_SITE_URL
@@ -16,11 +21,6 @@ export async function signInWithSpotify() {
     // Check for Vercel URL (preview deployments)
     if (process.env.VERCEL_URL) {
       return `https://${process.env.VERCEL_URL}`
-    }
-
-    // Development fallback
-    if (process.env.NODE_ENV === "development") {
-      return "http://localhost:3000"
     }
 
     // Last resort fallback
