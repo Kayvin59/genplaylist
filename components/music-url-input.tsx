@@ -31,7 +31,8 @@ export default function MusicUrlInput() {
       if (!scrapeResult.data.isMusicContent || scrapeResult.data.confidence < 0.5) {
         return
       }
-      if (scrapeResult.data.tracks.length === 0) {
+      const hasAlbumTracks = scrapeResult.data.albums?.some((a: any) => a.tracks?.length > 0) ?? false
+      if (scrapeResult.data.tracks.length === 0 && scrapeResult.data.albums.length === 0 && !hasAlbumTracks) {
         return
       }
     }
@@ -161,10 +162,16 @@ export default function MusicUrlInput() {
               <Badge className={getConfidenceColor(result.confidence)}>
                 {Math.round(result.confidence * 100)}% match
               </Badge>
-              <Badge variant="outline" className="text-muted-foreground">
-                <List className="w-3 h-3 mr-1" />
-                {result.tracks.length} tracks
-              </Badge>
+              {(() => {
+                const albumTrackCount = result.albums?.reduce((sum: number, a: any) => sum + (a.tracks?.length || 0), 0) ?? 0
+                const totalTracks = result.tracks.length + albumTrackCount
+                return totalTracks > 0 ? (
+                  <Badge variant="outline" className="text-muted-foreground">
+                    <List className="w-3 h-3 mr-1" />
+                    {totalTracks} tracks
+                  </Badge>
+                ) : null
+              })()}
               {result.albums?.length > 0 && (
                 <Badge variant="outline" className="text-muted-foreground">
                   <Album className="w-3 h-3 mr-1" />
