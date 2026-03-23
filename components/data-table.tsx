@@ -35,6 +35,7 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
   const router = useRouter()
 
   useEffect(() => {
+    // Standalone tracks (not belonging to any album)
     const convertedTracks = data.tracks.map((track) => ({
       title: track.title,
       artist: track.artist,
@@ -42,50 +43,41 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
       selected: false,
     }))
     setTracks(convertedTracks)
-    const convertedAlbums = data.albums.map((album) => ({
+
+    // Albums with their tracks converted to UITrack[]
+    const convertedAlbums: UIAlbum[] = data.albums.map((album) => ({
       ...album,
       selected: false,
+      tracks: (album.tracks || []).map((t) => ({
+        title: t.title,
+        artist: t.artist,
+        album: album.album,
+        selected: false,
+      })),
     }))
     setAlbums(convertedAlbums)
     const truncatedTitle = data.title.length > 40 ? data.title.slice(0, 40) + "..." : data.title
     setPlaylistName(`${truncatedTitle} Playlist`)
   }, [data])
 
-  // Group tracks by album and merge with album metadata
-  const { albumGroups, ungroupedTracks } = useMemo(() => {
-    const groups: AlbumGroup[] = []
-    const matched = new Set<number>()
+  // Build album groups from album state (tracks live on each album)
+  const albumGroups: AlbumGroup[] = useMemo(() => {
+    return albums.map((album) => ({
+      album,
+      tracks: album.tracks || [],
+      expanded: expandedAlbums.has(`${album.artist}-${album.album}`),
+    }))
+  }, [albums, expandedAlbums])
 
-    for (let ai = 0; ai < albums.length; ai++) {
-      const album = albums[ai]
-      const albumTracks: UITrack[] = []
-
-      tracks.forEach((track, ti) => {
-        if (!matched.has(ti) && track.album && track.album.toLowerCase() === album.album.toLowerCase()) {
-          albumTracks.push(track)
-          matched.add(ti)
-        }
-      })
-
-      groups.push({
-        album,
-        tracks: albumTracks,
-        expanded: expandedAlbums.has(`${album.artist}-${album.album}`),
-      })
-    }
-
-    const ungrouped = tracks.filter((_, i) => !matched.has(i))
-    return { albumGroups: groups, ungroupedTracks: ungrouped }
-  }, [tracks, albums, expandedAlbums])
-
-  const selectedTracks = tracks.filter((t) => t.selected)
+  // All selected tracks across albums + ungrouped
+  const allSelectedTracks = [
+    ...tracks.filter((t) => t.selected),
+    ...albums.flatMap((a) => (a.tracks || []).filter((t) => t.selected)),
+  ]
   const selectedAlbums = albums.filter((a) => a.selected)
-  const totalSelected = selectedTracks.length + selectedAlbums.filter((a) => {
-    // Count albums that are selected but have no matched tracks (will be fetched from Spotify)
-    const group = albumGroups.find((g) => g.album === a)
-    return group && group.tracks.length === 0
-  }).length
-  const hasSelection = selectedTracks.length > 0 || selectedAlbums.some((a) => a.selected)
+  // Albums selected but with no tracks at all (will be fetched from Spotify)
+  const albumsOnlySelected = selectedAlbums.filter((a) => !a.tracks?.length)
+  const hasSelection = allSelectedTracks.length > 0 || albumsOnlySelected.length > 0
 
   const toggleExpanded = (album: UIAlbum) => {
     const key = `${album.artist}-${album.album}`
@@ -101,48 +93,44 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
   }
 
   const handleAlbumSelect = (albumIndex: number, checked: boolean) => {
-    // Toggle album selection
-    setAlbums(albums.map((a, i) => (i === albumIndex ? { ...a, selected: checked } : a)))
-
-    // Also toggle all matched tracks for this album
-    const album = albums[albumIndex]
-    setTracks(
-      tracks.map((t) =>
-        t.album && t.album.toLowerCase() === album.album.toLowerCase() ? { ...t, selected: checked } : t,
+    setAlbums(
+      albums.map((a, i) =>
+        i === albumIndex
+          ? { ...a, selected: checked, tracks: (a.tracks || []).map((t) => ({ ...t, selected: checked })) }
+          : a,
       ),
     )
   }
 
-  const handleTrackSelect = (trackIndex: number, checked: boolean) => {
-    const updated = tracks.map((t, i) => (i === trackIndex ? { ...t, selected: checked } : t))
-    setTracks(updated)
-
-    // Update album checkbox state: if all tracks in an album are deselected, deselect the album
-    const track = tracks[trackIndex]
-    if (track.album) {
-      const albumIdx = albums.findIndex((a) => a.album.toLowerCase() === track.album?.toLowerCase())
-      if (albumIdx !== -1) {
-        const albumTracks = updated.filter(
-          (t) => t.album && t.album.toLowerCase() === albums[albumIdx].album.toLowerCase(),
-        )
-        const allSelected = albumTracks.length > 0 && albumTracks.every((t) => t.selected)
-        const noneSelected = albumTracks.every((t) => !t.selected)
-        if (noneSelected) {
-          setAlbums(albums.map((a, i) => (i === albumIdx ? { ...a, selected: false } : a)))
-        } else if (allSelected) {
-          setAlbums(albums.map((a, i) => (i === albumIdx ? { ...a, selected: true } : a)))
+  const handleAlbumTrackSelect = (albumIndex: number, trackIndex: number, checked: boolean) => {
+    setAlbums(
+      albums.map((a, i) => {
+        if (i !== albumIndex) return a
+        const updatedTracks = (a.tracks || []).map((t, ti) => (ti === trackIndex ? { ...t, selected: checked } : t))
+        const allSelected = updatedTracks.length > 0 && updatedTracks.every((t) => t.selected)
+        const noneSelected = updatedTracks.every((t) => !t.selected)
+        return {
+          ...a,
+          tracks: updatedTracks,
+          selected: allSelected ? true : noneSelected ? false : a.selected,
         }
-      }
-    }
+      }),
+    )
+  }
+
+  const handleUngroupedTrackSelect = (trackIndex: number, checked: boolean) => {
+    setTracks(tracks.map((t, i) => (i === trackIndex ? { ...t, selected: checked } : t)))
   }
 
   const handleSelectAll = (checked: boolean) => {
     setTracks(tracks.map((t) => ({ ...t, selected: checked })))
-    setAlbums(albums.map((a) => ({ ...a, selected: checked })))
-  }
-
-  const getTrackGlobalIndex = (track: UITrack) => {
-    return tracks.findIndex((t) => t === track)
+    setAlbums(
+      albums.map((a) => ({
+        ...a,
+        selected: checked,
+        tracks: (a.tracks || []).map((t) => ({ ...t, selected: checked })),
+      })),
+    )
   }
 
   const handleCreatePlaylist = async () => {
@@ -151,18 +139,12 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
     setIsCreatingPlaylist(true)
     setPlaylistResult(null)
 
-    // For albums with no matched tracks, pass them separately so Spotify can fetch their tracks
-    const albumsWithoutTracks = selectedAlbums.filter((a) => {
-      const group = albumGroups.find((g) => g.album === a)
-      return group && group.tracks.filter((t) => t.selected).length === 0
-    })
-
     try {
       const result = await createPlaylist({
         name: playlistName.trim(),
         description: `Generated from ${data.title}`,
-        tracks: selectedTracks,
-        albums: albumsWithoutTracks.length > 0 ? albumsWithoutTracks : undefined,
+        tracks: allSelectedTracks,
+        albums: albumsOnlySelected.length > 0 ? albumsOnlySelected : undefined,
       })
 
       if (result.needsAuth) {
@@ -295,7 +277,8 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
           <div className="flex items-center gap-2 w-full sm:w-auto">
             {hasSelection && (
               <Badge variant="secondary" className="text-xs">
-                {totalSelected} selected
+                {allSelectedTracks.length} tracks
+                {albumsOnlySelected.length > 0 && ` + ${albumsOnlySelected.length} albums`}
               </Badge>
             )}
             <Button
@@ -384,27 +367,26 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
                   <div className="border-t border-border">
                     <Table>
                       <TableBody>
-                        {group.tracks.map((track) => {
-                          const globalIdx = getTrackGlobalIndex(track)
-                          return (
-                            <TableRow
-                              key={globalIdx}
-                              className={`transition-colors cursor-pointer ${
-                                track.selected ? "bg-green-50/30" : "hover:bg-muted/20"
-                              }`}
-                              onClick={() => handleTrackSelect(globalIdx, !track.selected)}
-                            >
-                              <TableCell className="w-12 pr-0" onClick={(e) => e.stopPropagation()}>
-                                <Checkbox
-                                  checked={track.selected}
-                                  onCheckedChange={(checked) => handleTrackSelect(globalIdx, checked as boolean)}
-                                />
-                              </TableCell>
-                              <TableCell className="font-medium text-sm">{track.artist}</TableCell>
-                              <TableCell className="text-sm text-muted-foreground">{track.title}</TableCell>
-                            </TableRow>
-                          )
-                        })}
+                        {group.tracks.map((track, trackIdx) => (
+                          <TableRow
+                            key={trackIdx}
+                            className={`transition-colors cursor-pointer ${
+                              track.selected ? "bg-green-50/30" : "hover:bg-muted/20"
+                            }`}
+                            onClick={() => handleAlbumTrackSelect(albumIdx, trackIdx, !track.selected)}
+                          >
+                            <TableCell className="w-12 pr-0" onClick={(e) => e.stopPropagation()}>
+                              <Checkbox
+                                checked={track.selected}
+                                onCheckedChange={(checked) =>
+                                  handleAlbumTrackSelect(albumIdx, trackIdx, checked as boolean)
+                                }
+                              />
+                            </TableCell>
+                            <TableCell className="font-medium text-sm">{track.artist}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">{track.title}</TableCell>
+                          </TableRow>
+                        ))}
                       </TableBody>
                     </Table>
                   </div>
@@ -423,7 +405,7 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
           })}
 
           {/* Ungrouped tracks (not belonging to any album) */}
-          {ungroupedTracks.length > 0 && (
+          {tracks.length > 0 && (
             <div className="border border-border rounded-lg overflow-hidden">
               {albumGroups.length > 0 && (
                 <div className="p-3 bg-muted/30 border-b border-border">
@@ -446,30 +428,27 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {ungroupedTracks.map((track) => {
-                    const globalIdx = getTrackGlobalIndex(track)
-                    return (
-                      <TableRow
-                        key={globalIdx}
-                        className={`transition-colors cursor-pointer ${
-                          track.selected ? "bg-green-50/50" : "hover:bg-muted/30"
-                        }`}
-                        onClick={() => handleTrackSelect(globalIdx, !track.selected)}
-                      >
-                        <TableCell className="pr-0" onClick={(e) => e.stopPropagation()}>
-                          <Checkbox
-                            checked={track.selected}
-                            onCheckedChange={(checked) => handleTrackSelect(globalIdx, checked as boolean)}
-                          />
-                        </TableCell>
-                        <TableCell className="font-medium text-sm">{track.artist}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{track.title}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground hidden sm:table-cell">
-                          {track.album || "—"}
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
+                  {tracks.map((track, idx) => (
+                    <TableRow
+                      key={idx}
+                      className={`transition-colors cursor-pointer ${
+                        track.selected ? "bg-green-50/50" : "hover:bg-muted/30"
+                      }`}
+                      onClick={() => handleUngroupedTrackSelect(idx, !track.selected)}
+                    >
+                      <TableCell className="pr-0" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={track.selected}
+                          onCheckedChange={(checked) => handleUngroupedTrackSelect(idx, checked as boolean)}
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium text-sm">{track.artist}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{track.title}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground hidden sm:table-cell">
+                        {track.album || "—"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </div>

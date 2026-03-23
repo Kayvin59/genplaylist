@@ -16,10 +16,12 @@ export interface Album {
   album: string
   year?: number
   trackCount?: number
+  tracks?: SpotifyTrack[]
 }
 
 export interface UIAlbum extends Album {
   selected: boolean
+  tracks?: UITrack[]
 }
 
 export interface CreatePlaylistParams {
