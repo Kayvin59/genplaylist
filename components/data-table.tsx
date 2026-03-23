@@ -295,8 +295,7 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
           <div className="flex items-center gap-2 w-full sm:w-auto">
             {hasSelection && (
               <Badge variant="secondary" className="text-xs">
-                {selectedTracks.length} tracks
-                {selectedAlbums.length > 0 && ` + ${selectedAlbums.length} albums`}
+                {totalSelected} selected
               </Badge>
             )}
             <Button
