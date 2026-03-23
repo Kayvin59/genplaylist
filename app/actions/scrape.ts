@@ -34,6 +34,15 @@ const MusicDataSchema = z.object({
         album: z.string().min(1).max(100).describe("Album name"),
         year: z.number().optional().describe("Release year if mentioned"),
         trackCount: z.number().optional().describe("Number of tracks if mentioned"),
+        tracks: z
+          .array(
+            z.object({
+              artist: z.string().min(1).max(100).describe("Artist name"),
+              title: z.string().min(1).max(100).describe("Song title"),
+            }),
+          )
+          .optional()
+          .describe("Individual tracks from this album if mentioned in the content"),
       }),
     )
     .max(50)
@@ -207,8 +216,10 @@ export async function musicScraper(url: string): Promise<rawMusicScraperResult> 
       schema: MusicDataSchema,
       prompt: `Extract music data from this content. Focus on:
 
-TRACKS: Individual songs with artist names
-ALBUMS: Full album mentions with artist
+TRACKS: Individual songs with artist names (standalone tracks not part of an album)
+ALBUMS: Full album mentions with artist. For each album, include its tracks if they are listed in the content.
+
+IMPORTANT: When the content lists tracks that belong to an album, put those tracks inside the album's "tracks" array (not in the top-level tracks array). Only use the top-level tracks array for standalone songs not associated with any album.
 
 EXTRACT FORMATS:
 • "Artist - Song"
@@ -219,7 +230,7 @@ EXTRACT FORMATS:
 IGNORE: News, non-music content, navigation
 
 Content:
-${scrapeResult.content.slice(0, 6000)}`,
+${scrapeResult.content.slice(0, 15000)}`,
       abortSignal: AbortSignal.timeout(20000),
     })
 
@@ -264,6 +275,13 @@ ${scrapeResult.content.slice(0, 6000)}`,
         album: album.album.trim(),
         year: album.year,
         trackCount: album.trackCount,
+        tracks: album.tracks
+          ?.filter((t) => t.artist?.trim() && t.title?.trim())
+          .map((t) => ({
+            artist: t.artist.trim(),
+            title: t.title.trim(),
+            album: album.album.trim(),
+          })),
       }))
 
     return {

@@ -4,14 +4,14 @@ import { CreatePlaylistParams, PlaylistResult } from "@/types"
 import { createClient } from "@/utils/supabase/server"
 
 
-export async function createPlaylist({ name, description, tracks }: CreatePlaylistParams): Promise<PlaylistResult> {
+export async function createPlaylist({ name, description, tracks, albums }: CreatePlaylistParams): Promise<PlaylistResult> {
   // Input Validation
   if (!name?.trim()) {
     return { success: false, error: "Playlist name is required" }
   }
 
-  if (!tracks?.length) {
-    return { success: false, error: "No tracks selected" }
+  if (!tracks?.length && !albums?.length) {
+    return { success: false, error: "No tracks or albums selected" }
   }
 
   // Sanitize and validate inputs
@@ -31,8 +31,8 @@ export async function createPlaylist({ name, description, tracks }: CreatePlayli
     (track) => track?.title?.trim() && track?.artist?.trim() && track.title.length <= 200 && track.artist.length <= 200,
   )
 
-  if (validTracks.length === 0) {
-    return { success: false, error: "No valid tracks found" }
+  if (validTracks.length === 0 && !albums?.length) {
+    return { success: false, error: "No valid tracks or albums found" }
   }
 
   const supabase = await createClient()
@@ -108,7 +108,7 @@ export async function createPlaylist({ name, description, tracks }: CreatePlayli
 
     const playlist = await playlistResponse.json()
 
-    // Search for tracks with rate limiting
+    // Search for individual tracks
     const trackUris: string[] = []
     const batchSize = 10
 
@@ -118,7 +118,6 @@ export async function createPlaylist({ name, description, tracks }: CreatePlayli
       await Promise.all(
         batch.map(async (track) => {
           try {
-            // Sanitize search query
             const sanitizedTitle = track.title.trim().replace(/[^\w\s-]/g, "")
             const sanitizedArtist = track.artist.trim().replace(/[^\w\s-]/g, "")
 
@@ -145,9 +144,55 @@ export async function createPlaylist({ name, description, tracks }: CreatePlayli
         }),
       )
 
-      // Rate limiting - wait between batches
       if (i + batchSize < validTracks.length) {
         await new Promise((resolve) => setTimeout(resolve, 100))
+      }
+    }
+
+    // Search for album tracks
+    if (albums?.length) {
+      for (const album of albums) {
+        try {
+          const sanitizedAlbum = album.album.trim().replace(/[^\w\s-]/g, "")
+          const sanitizedArtist = album.artist.trim().replace(/[^\w\s-]/g, "")
+          const searchQuery = `album:"${sanitizedAlbum}" artist:"${sanitizedArtist}"`
+
+          const searchResponse = await fetch(
+            `https://api.spotify.com/v1/search?q=${encodeURIComponent(searchQuery)}&type=album&limit=1`,
+            {
+              headers: { Authorization: `Bearer ${accessToken}` },
+            },
+          )
+
+          if (searchResponse.ok) {
+            const searchResult = await searchResponse.json()
+            const spotifyAlbum = searchResult.albums?.items?.[0]
+
+            if (spotifyAlbum) {
+              // Fetch album tracks
+              const albumTracksResponse = await fetch(
+                `https://api.spotify.com/v1/albums/${spotifyAlbum.id}/tracks?limit=50`,
+                {
+                  headers: { Authorization: `Bearer ${accessToken}` },
+                },
+              )
+
+              if (albumTracksResponse.ok) {
+                const albumTracksData = await albumTracksResponse.json()
+                for (const track of albumTracksData.items || []) {
+                  if (track.uri) {
+                    trackUris.push(track.uri)
+                  }
+                }
+              }
+            }
+          }
+
+          // Rate limiting between album searches
+          await new Promise((resolve) => setTimeout(resolve, 100))
+        } catch (error) {
+          console.error(`Failed to search for album: ${album.album} by ${album.artist}`, error)
+        }
       }
     }
 
@@ -181,7 +226,7 @@ export async function createPlaylist({ name, description, tracks }: CreatePlayli
       playlistId: playlist.id,
       playlistUrl: playlist.external_urls.spotify,
       tracksAdded: trackUris.length,
-      totalTracks: validTracks.length,
+      totalTracks: validTracks.length + (albums?.length || 0),
     }
   } catch (error) {
     console.error("Error creating playlist:", error)
