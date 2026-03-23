@@ -351,14 +351,10 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
                     />
                   </div>
                   <div className="flex items-center gap-1.5 text-muted-foreground">
-                    {albumTrackCount > 0 ? (
-                      isExpanded ? (
-                        <ChevronDown className="w-4 h-4" />
-                      ) : (
-                        <ChevronRight className="w-4 h-4" />
-                      )
+                    {isExpanded ? (
+                      <ChevronDown className="w-4 h-4" />
                     ) : (
-                      <div className="w-4" />
+                      <ChevronRight className="w-4 h-4" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">

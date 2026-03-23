@@ -31,8 +31,8 @@ export async function createPlaylist({ name, description, tracks, albums }: Crea
     (track) => track?.title?.trim() && track?.artist?.trim() && track.title.length <= 200 && track.artist.length <= 200,
   )
 
-  if (validTracks.length === 0) {
-    return { success: false, error: "No valid tracks found" }
+  if (validTracks.length === 0 && !albums?.length) {
+    return { success: false, error: "No valid tracks or albums found" }
   }
 
   const supabase = await createClient()
