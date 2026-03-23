@@ -18,10 +18,15 @@ export interface Album {
   trackCount?: number
 }
 
+export interface UIAlbum extends Album {
+  selected: boolean
+}
+
 export interface CreatePlaylistParams {
   name: string
   description: string
   tracks: UITrack[]
+  albums?: UIAlbum[]
 }
 
 export interface PlaylistResult {

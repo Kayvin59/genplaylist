@@ -219,7 +219,7 @@ EXTRACT FORMATS:
 IGNORE: News, non-music content, navigation
 
 Content:
-${scrapeResult.content.slice(0, 6000)}`,
+${scrapeResult.content.slice(0, 15000)}`,
       abortSignal: AbortSignal.timeout(20000),
     })
 

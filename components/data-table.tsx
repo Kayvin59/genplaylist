@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ScrapedDataTableProps, UITrack } from "@/types"
+import { ScrapedDataTableProps, UIAlbum, UITrack } from "@/types"
 import { AlbumIcon, AlertCircle, Check, ChevronLeft, ChevronRight, ExternalLink, List, Loader2, Music } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -18,6 +18,7 @@ const ITEMS_PER_PAGE = 10
 
 export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
   const [tracks, setTracks] = useState<UITrack[]>([])
+  const [albums, setAlbums] = useState<UIAlbum[]>([])
   const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false)
   const [playlistName, setPlaylistName] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
@@ -38,7 +39,11 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
       selected: false,
     }))
     setTracks(convertedTracks)
-    // Truncate default name to avoid very long titles
+    const convertedAlbums = data.albums.map((album) => ({
+      ...album,
+      selected: false,
+    }))
+    setAlbums(convertedAlbums)
     const truncatedTitle = data.title.length > 40 ? data.title.slice(0, 40) + "..." : data.title
     setPlaylistName(`${truncatedTitle} Playlist`)
   }, [data])
@@ -48,6 +53,8 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
   const endIndex = startIndex + ITEMS_PER_PAGE
   const currentTracks = tracks.slice(startIndex, endIndex)
   const selectedTracks = tracks.filter((track) => track.selected)
+  const selectedAlbums = albums.filter((album) => album.selected)
+  const hasSelection = selectedTracks.length > 0 || selectedAlbums.length > 0
 
   const handleSelectAll = (checked: boolean) => {
     setTracks(tracks.map((track) => ({ ...track, selected: checked })))
@@ -59,8 +66,16 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
     setTracks(updatedTracks)
   }
 
+  const handleSelectAllAlbums = (checked: boolean) => {
+    setAlbums(albums.map((album) => ({ ...album, selected: checked })))
+  }
+
+  const handleAlbumSelect = (index: number, checked: boolean) => {
+    setAlbums(albums.map((album, i) => (i === index ? { ...album, selected: checked } : album)))
+  }
+
   const handleCreatePlaylist = async () => {
-    if (selectedTracks.length === 0 || !playlistName.trim()) return
+    if (!hasSelection || !playlistName.trim()) return
 
     setIsCreatingPlaylist(true)
     setPlaylistResult(null)
@@ -70,6 +85,7 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
         name: playlistName.trim(),
         description: `Generated from ${data.title}`,
         tracks: selectedTracks,
+        albums: selectedAlbums.length > 0 ? selectedAlbums : undefined,
       })
 
       if (result.needsAuth) {
@@ -146,6 +162,7 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
             onClick={() => {
               setPlaylistResult(null)
               setTracks(tracks.map((track) => ({ ...track, selected: false })))
+              setAlbums(albums.map((album) => ({ ...album, selected: false })))
             }}
             className="mt-2"
           >
@@ -206,14 +223,16 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
                 </label>
               </div>
               <div className="flex items-center gap-2 w-full sm:w-auto">
-                {selectedTracks.length > 0 && (
+                {hasSelection && (
                   <Badge variant="secondary" className="text-xs">
-                    {selectedTracks.length} selected
+                    {selectedTracks.length > 0 ? `${selectedTracks.length} tracks` : ""}
+                    {selectedTracks.length > 0 && selectedAlbums.length > 0 ? " + " : ""}
+                    {selectedAlbums.length > 0 ? `${selectedAlbums.length} albums` : ""}
                   </Badge>
                 )}
                 <Button
                   onClick={handleCreatePlaylist}
-                  disabled={selectedTracks.length === 0 || isCreatingPlaylist || !playlistName.trim()}
+                  disabled={!hasSelection || isCreatingPlaylist || !playlistName.trim()}
                   className="bg-[#1DB954] hover:bg-[#1aa34a] text-white transition-colors flex-1 sm:flex-none"
                   size="sm"
                 >
@@ -327,27 +346,83 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
           </TabsContent>
 
           <TabsContent value="albums" className="space-y-4 mt-4">
-            {data.albums.length > 0 ? (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {data.albums.map((album, index) => (
-                  <div key={index} className="p-4 border border-border rounded-lg space-y-1.5">
-                    <h4 className="font-medium text-sm text-foreground">{album.album}</h4>
-                    <p className="text-xs text-muted-foreground">by {album.artist}</p>
-                    <div className="flex gap-1.5 pt-1">
-                      {album.year && (
-                        <Badge variant="outline" className="text-xs px-1.5 py-0">
-                          {album.year}
-                        </Badge>
-                      )}
-                      {album.trackCount && (
-                        <Badge variant="outline" className="text-xs px-1.5 py-0">
-                          {album.trackCount} tracks
-                        </Badge>
-                      )}
-                    </div>
+            {albums.length > 0 ? (
+              <>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="select-all-albums"
+                      checked={albums.length > 0 && albums.every((a) => a.selected)}
+                      onCheckedChange={handleSelectAllAlbums}
+                    />
+                    <label htmlFor="select-all-albums" className="text-sm cursor-pointer select-none">
+                      Select all ({albums.length})
+                    </label>
                   </div>
-                ))}
-              </div>
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    {selectedAlbums.length > 0 && (
+                      <Badge variant="secondary" className="text-xs">
+                        {selectedAlbums.length} selected
+                      </Badge>
+                    )}
+                    <Button
+                      onClick={handleCreatePlaylist}
+                      disabled={!hasSelection || isCreatingPlaylist || !playlistName.trim()}
+                      className="bg-[#1DB954] hover:bg-[#1aa34a] text-white transition-colors flex-1 sm:flex-none"
+                      size="sm"
+                    >
+                      {isCreatingPlaylist ? (
+                        <>
+                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                          Creating...
+                        </>
+                      ) : (
+                        <>
+                          <Music className="mr-1.5 h-3.5 w-3.5" />
+                          Create playlist
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {albums.map((album, index) => (
+                    <div
+                      key={index}
+                      className={`p-4 border rounded-lg space-y-1.5 cursor-pointer transition-colors ${
+                        album.selected ? "border-green-300 bg-green-50/50" : "border-border hover:bg-muted/30"
+                      }`}
+                      onClick={() => handleAlbumSelect(index, !album.selected)}
+                    >
+                      <div className="flex items-start gap-2">
+                        <Checkbox
+                          checked={album.selected}
+                          onCheckedChange={(checked) => handleAlbumSelect(index, checked as boolean)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="mt-0.5"
+                        />
+                        <div>
+                          <h4 className="font-medium text-sm text-foreground">{album.album}</h4>
+                          <p className="text-xs text-muted-foreground">by {album.artist}</p>
+                          <div className="flex gap-1.5 pt-1">
+                            {album.year && (
+                              <Badge variant="outline" className="text-xs px-1.5 py-0">
+                                {album.year}
+                              </Badge>
+                            )}
+                            {album.trackCount && (
+                              <Badge variant="outline" className="text-xs px-1.5 py-0">
+                                {album.trackCount} tracks
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 <AlbumIcon className="w-10 h-10 mx-auto mb-3 opacity-30" />
