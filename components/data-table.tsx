@@ -1,6 +1,6 @@
 "use client"
 
-import { createPlaylist } from "@/app/actions/spotify"
+import { createPlaylist, fetchAlbumTracks } from "@/app/actions/spotify"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -31,10 +31,19 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
     playlistUrl?: string
     playlistId?: string
   } | null>(null)
+  const [loadingAlbumTracks, setLoadingAlbumTracks] = useState<Set<string>>(new Set())
 
   const router = useRouter()
 
   useEffect(() => {
+    console.log("[ScrapedDataTable] Received data prop:", {
+      title: data.title,
+      tracksCount: data.tracks?.length,
+      albumsCount: data.albums?.length,
+      tracks: data.tracks,
+      albums: data.albums,
+    })
+
     // Standalone tracks (not belonging to any album)
     const convertedTracks = data.tracks.map((track) => ({
       title: track.title,
@@ -79,8 +88,10 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
   const albumsOnlySelected = selectedAlbums.filter((a) => !a.tracks?.length)
   const hasSelection = allSelectedTracks.length > 0 || albumsOnlySelected.length > 0
 
-  const toggleExpanded = (album: UIAlbum) => {
+  const toggleExpanded = async (album: UIAlbum, albumIndex: number) => {
     const key = `${album.artist}-${album.album}`
+    const isCurrentlyExpanded = expandedAlbums.has(key)
+
     setExpandedAlbums((prev) => {
       const next = new Set(prev)
       if (next.has(key)) {
@@ -90,9 +101,42 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
       }
       return next
     })
+
+    // Fetch tracks from Spotify if expanding and album has no tracks yet
+    if (!isCurrentlyExpanded && (!album.tracks || album.tracks.length === 0)) {
+      setLoadingAlbumTracks((prev) => new Set(prev).add(key))
+      try {
+        const result = await fetchAlbumTracks(album.artist, album.album)
+        if (result.needsAuth) {
+          router.push("/")
+          return
+        }
+        if (result.success && result.tracks && result.tracks.length > 0) {
+          setAlbums((prev) =>
+            prev.map((a, i) =>
+              i === albumIndex
+                ? {
+                    ...a,
+                    tracks: result.tracks!.map((t) => ({ ...t, selected: a.selected })),
+                  }
+                : a,
+            ),
+          )
+        }
+      } catch (error) {
+        console.error("Failed to fetch album tracks:", error)
+      } finally {
+        setLoadingAlbumTracks((prev) => {
+          const next = new Set(prev)
+          next.delete(key)
+          return next
+        })
+      }
+    }
   }
 
-  const handleAlbumSelect = (albumIndex: number, checked: boolean) => {
+  const handleAlbumSelect = async (albumIndex: number, checked: boolean) => {
+    const album = albums[albumIndex]
     setAlbums(
       albums.map((a, i) =>
         i === albumIndex
@@ -100,6 +144,38 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
           : a,
       ),
     )
+
+    // If selecting an album with no tracks, fetch them from Spotify
+    if (checked && (!album.tracks || album.tracks.length === 0)) {
+      const key = `${album.artist}-${album.album}`
+      setLoadingAlbumTracks((prev) => new Set(prev).add(key))
+      // Auto-expand the album so user sees tracks loading
+      setExpandedAlbums((prev) => new Set(prev).add(key))
+      try {
+        const result = await fetchAlbumTracks(album.artist, album.album)
+        if (result.needsAuth) {
+          router.push("/")
+          return
+        }
+        if (result.success && result.tracks && result.tracks.length > 0) {
+          setAlbums((prev) =>
+            prev.map((a, i) =>
+              i === albumIndex
+                ? { ...a, tracks: result.tracks!.map((t) => ({ ...t, selected: true })) }
+                : a,
+            ),
+          )
+        }
+      } catch (error) {
+        console.error("Failed to fetch album tracks:", error)
+      } finally {
+        setLoadingAlbumTracks((prev) => {
+          const next = new Set(prev)
+          next.delete(key)
+          return next
+        })
+      }
+    }
   }
 
   const handleAlbumTrackSelect = (albumIndex: number, trackIndex: number, checked: boolean) => {
@@ -122,7 +198,7 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
     setTracks(tracks.map((t, i) => (i === trackIndex ? { ...t, selected: checked } : t)))
   }
 
-  const handleSelectAll = (checked: boolean) => {
+  const handleSelectAll = async (checked: boolean) => {
     setTracks(tracks.map((t) => ({ ...t, selected: checked })))
     setAlbums(
       albums.map((a) => ({
@@ -131,6 +207,40 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
         tracks: (a.tracks || []).map((t) => ({ ...t, selected: checked })),
       })),
     )
+
+    // When selecting all, fetch tracks for albums that don't have them yet
+    if (checked) {
+      const albumsWithoutTracks = albums
+        .map((a, i) => ({ album: a, index: i }))
+        .filter(({ album }) => !album.tracks || album.tracks.length === 0)
+
+      await Promise.all(
+        albumsWithoutTracks.map(async ({ album, index }) => {
+          const key = `${album.artist}-${album.album}`
+          setLoadingAlbumTracks((prev) => new Set(prev).add(key))
+          try {
+            const result = await fetchAlbumTracks(album.artist, album.album)
+            if (result.success && result.tracks && result.tracks.length > 0) {
+              setAlbums((prev) =>
+                prev.map((a, i) =>
+                  i === index
+                    ? { ...a, tracks: result.tracks!.map((t) => ({ ...t, selected: true })) }
+                    : a,
+                ),
+              )
+            }
+          } catch (error) {
+            console.error("Failed to fetch album tracks:", error)
+          } finally {
+            setLoadingAlbumTracks((prev) => {
+              const next = new Set(prev)
+              next.delete(key)
+              return next
+            })
+          }
+        }),
+      )
+    }
   }
 
   const handleCreatePlaylist = async () => {
@@ -324,7 +434,7 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
                   className={`flex items-center gap-3 p-3 cursor-pointer transition-colors ${
                     group.album.selected ? "bg-green-50/50" : "hover:bg-muted/30"
                   }`}
-                  onClick={() => toggleExpanded(group.album)}
+                  onClick={() => toggleExpanded(group.album, albumIdx)}
                 >
                   <div onClick={(e) => e.stopPropagation()}>
                     <Checkbox
@@ -392,11 +502,19 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
                   </div>
                 )}
 
-                {/* No tracks hint */}
-                {isExpanded && albumTrackCount === 0 && (
+                {/* Loading tracks from Spotify */}
+                {isExpanded && albumTrackCount === 0 && loadingAlbumTracks.has(`${group.album.artist}-${group.album.album}`) && (
+                  <div className="border-t border-border p-3 flex items-center justify-center gap-2">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+                    <p className="text-xs text-muted-foreground">Fetching tracks from Spotify...</p>
+                  </div>
+                )}
+
+                {/* No tracks found after fetch */}
+                {isExpanded && albumTrackCount === 0 && !loadingAlbumTracks.has(`${group.album.artist}-${group.album.album}`) && (
                   <div className="border-t border-border p-3">
                     <p className="text-xs text-muted-foreground text-center">
-                      No individual tracks found — selecting this album will fetch all tracks from Spotify
+                      No tracks found on Spotify for this album
                     </p>
                   </div>
                 )}
