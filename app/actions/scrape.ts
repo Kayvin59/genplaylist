@@ -284,6 +284,15 @@ ${scrapeResult.content.slice(0, 15000)}`,
           })),
       }))
 
+    console.log("[Scrape] Final result:", {
+      title: result.object.title,
+      tracksCount: validTracks.length,
+      albumsCount: validAlbums.length,
+      confidence: result.object.confidence,
+      firstTrack: validTracks[0],
+      firstAlbum: validAlbums[0],
+    })
+
     return {
       success: true,
       data: {
