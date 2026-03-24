@@ -2,32 +2,48 @@
 
 import { createClient } from "@/utils/supabase/server"
 import { revalidatePath } from "next/cache"
+import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 
 export async function signInWithSpotify() {
   const supabase = await createClient()
 
-  const getBaseUrl = () => {
-    // Always use localhost in development (even if NEXT_PUBLIC_SITE_URL is set)
+  const getBaseUrl = async () => {
+    // Use the actual request host — works correctly on every deployment
+    const headersList = await headers()
+    const host = headersList.get("host")
+    const proto = headersList.get("x-forwarded-proto") || "https"
+
+    if (host) {
+      const baseUrl = `${proto}://${host}`
+      console.log("[Auth] Resolved baseUrl from headers:", baseUrl)
+      return baseUrl
+    }
+
+    // Fallback: localhost in development
     if (process.env.NODE_ENV === "development") {
+      console.log("[Auth] Fallback to localhost (dev mode)")
       return "http://localhost:3000"
     }
 
-    // Check for explicit site URL (production & preview)
+    // Fallback: explicit site URL
     if (process.env.NEXT_PUBLIC_SITE_URL) {
+      console.log("[Auth] Fallback to NEXT_PUBLIC_SITE_URL:", process.env.NEXT_PUBLIC_SITE_URL)
       return process.env.NEXT_PUBLIC_SITE_URL
     }
 
-    // Check for Vercel URL (preview deployments)
+    // Fallback: Vercel auto-provided URL
     if (process.env.VERCEL_URL) {
-      return `https://${process.env.VERCEL_URL}`
+      const url = `https://${process.env.VERCEL_URL}`
+      console.log("[Auth] Fallback to VERCEL_URL:", url)
+      return url
     }
 
-    // Last resort fallback
+    console.warn("[Auth] No URL source found, using hardcoded fallback")
     return "https://gen-playlist.vercel.app"
   }
 
-  const baseUrl = getBaseUrl()
+  const baseUrl = await getBaseUrl()
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "spotify",
