@@ -1,7 +1,72 @@
 "use server"
 
-import { CreatePlaylistParams, PlaylistResult } from "@/types"
+import { CreatePlaylistParams, PlaylistResult, SpotifyTrack } from "@/types"
 import { createClient } from "@/utils/supabase/server"
+
+
+export async function fetchAlbumTracks(
+  artist: string,
+  album: string,
+): Promise<{ success: boolean; tracks?: SpotifyTrack[]; error?: string; needsAuth?: boolean }> {
+  const supabase = await createClient()
+
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession()
+
+  if (sessionError || !session?.provider_token) {
+    return { success: false, error: "Spotify access token not available.", needsAuth: true }
+  }
+
+  const accessToken = session.provider_token
+
+  try {
+    const sanitizedAlbum = album.trim().replace(/[^\w\s-]/g, "")
+    const sanitizedArtist = artist.trim().replace(/[^\w\s-]/g, "")
+    const searchQuery = `album:"${sanitizedAlbum}" artist:"${sanitizedArtist}"`
+
+    const searchResponse = await fetch(
+      `https://api.spotify.com/v1/search?q=${encodeURIComponent(searchQuery)}&type=album&limit=1`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    )
+
+    if (!searchResponse.ok) {
+      if (searchResponse.status === 401) {
+        return { success: false, error: "Spotify session expired.", needsAuth: true }
+      }
+      return { success: false, error: `Spotify search failed (HTTP ${searchResponse.status})` }
+    }
+
+    const searchResult = await searchResponse.json()
+    const spotifyAlbum = searchResult.albums?.items?.[0]
+
+    if (!spotifyAlbum) {
+      return { success: true, tracks: [] }
+    }
+
+    const albumTracksResponse = await fetch(
+      `https://api.spotify.com/v1/albums/${spotifyAlbum.id}/tracks?limit=50`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    )
+
+    if (!albumTracksResponse.ok) {
+      return { success: false, error: "Failed to fetch album tracks" }
+    }
+
+    const albumTracksData = await albumTracksResponse.json()
+    const tracks: SpotifyTrack[] = (albumTracksData.items || []).map((track: any) => ({
+      title: track.name,
+      artist: track.artists?.map((a: any) => a.name).join(", ") || artist,
+      album: spotifyAlbum.name,
+    }))
+
+    return { success: true, tracks }
+  } catch (error) {
+    console.error(`Failed to fetch tracks for album: ${album} by ${artist}`, error)
+    return { success: false, error: "Failed to fetch album tracks" }
+  }
+}
 
 
 export async function createPlaylist({ name, description, tracks, albums }: CreatePlaylistParams): Promise<PlaylistResult> {
