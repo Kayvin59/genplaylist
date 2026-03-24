@@ -35,6 +35,14 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
   const router = useRouter()
 
   useEffect(() => {
+    console.log("[ScrapedDataTable] Received data prop:", {
+      title: data.title,
+      tracksCount: data.tracks?.length,
+      albumsCount: data.albums?.length,
+      tracks: data.tracks,
+      albums: data.albums,
+    })
+
     // Standalone tracks (not belonging to any album)
     const convertedTracks = data.tracks.map((track) => ({
       title: track.title,
