@@ -1,6 +1,6 @@
 "use server"
 
-import { getClientIp, playlistRateLimit } from "@/lib/security"
+import { playlistRateLimit } from "@/lib/security"
 import { CreatePlaylistParams, PlaylistResult, SpotifyTrack } from "@/types"
 import { createClient } from "@/utils/supabase/server"
 
@@ -71,46 +71,7 @@ export async function fetchAlbumTracks(
 
 
 export async function createPlaylist({ name, description, tracks, albums }: CreatePlaylistParams): Promise<PlaylistResult> {
-  // Rate limiting (5 req/min per IP via Upstash Redis)
-  const ip = await getClientIp()
-  const { success: allowed, reset } = await playlistRateLimit.limit(ip)
-  if (!allowed) {
-    return {
-      success: false,
-      error: `Rate limit exceeded. Try again in ${Math.ceil((reset - Date.now()) / 1000)}s`,
-    }
-  }
-
-  // Input Validation
-  if (!name?.trim()) {
-    return { success: false, error: "Playlist name is required" }
-  }
-
-  if (!tracks?.length && !albums?.length) {
-    return { success: false, error: "No tracks or albums selected" }
-  }
-
-  // Sanitize and validate inputs
-  const sanitizedName = name.trim().slice(0, 100) // Spotify limit
-  const sanitizedDescription = description.trim().slice(0, 300) // Spotify limit
-
-  if (sanitizedName.length < 1) {
-    return { success: false, error: "Playlist name cannot be empty" }
-  }
-
-  if (tracks.length > 10000) {
-    return { success: false, error: "Too many tracks selected (max 10,000)" }
-  }
-
-  // Validate track data
-  const validTracks = tracks.filter(
-    (track) => track?.title?.trim() && track?.artist?.trim() && track.title.length <= 200 && track.artist.length <= 200,
-  )
-
-  if (validTracks.length === 0 && !albums?.length) {
-    return { success: false, error: "No valid tracks or albums found" }
-  }
-
+  // Authentication first — reject unauthenticated requests before consuming rate limit tokens
   const supabase = await createClient()
 
   const {
@@ -137,6 +98,45 @@ export async function createPlaylist({ name, description, tracks, albums }: Crea
       error: "Spotify access token not available. Please reconnect your account.",
       needsAuth: true,
     }
+  }
+
+  // Rate limiting (5 req/min per user — keyed by user ID for authenticated actions)
+  const { success: allowed, reset } = await playlistRateLimit.limit(user.id)
+  if (!allowed) {
+    return {
+      success: false,
+      error: `Rate limit exceeded. Try again in ${Math.ceil((reset - Date.now()) / 1000)}s`,
+    }
+  }
+
+  // Input Validation
+  if (!name?.trim()) {
+    return { success: false, error: "Playlist name is required" }
+  }
+
+  if (!tracks?.length && !albums?.length) {
+    return { success: false, error: "No tracks or albums selected" }
+  }
+
+  // Sanitize and validate inputs
+  const sanitizedName = name.trim().slice(0, 100) // Spotify limit
+  const sanitizedDescription = description?.trim().slice(0, 300) ?? "" // Spotify limit
+
+  if (sanitizedName.length < 1) {
+    return { success: false, error: "Playlist name cannot be empty" }
+  }
+
+  if (tracks.length > 10000) {
+    return { success: false, error: "Too many tracks selected (max 10,000)" }
+  }
+
+  // Validate track data
+  const validTracks = tracks.filter(
+    (track) => track?.title?.trim() && track?.artist?.trim() && track.title.length <= 200 && track.artist.length <= 200,
+  )
+
+  if (validTracks.length === 0 && !albums?.length) {
+    return { success: false, error: "No valid tracks or albums found" }
   }
 
   const accessToken = session.provider_token
