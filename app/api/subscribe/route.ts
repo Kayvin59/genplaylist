@@ -23,7 +23,14 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const formData = await request.formData()
+    const body = await request.json()
+
+    // Build FormData from JSON body so subscribeAction can validate it
+    const formData = new FormData()
+    if (body.email) {
+      formData.set("email", body.email)
+    }
+
     const result = await subscribeAction(formData)
 
     if ('error' in result) {
