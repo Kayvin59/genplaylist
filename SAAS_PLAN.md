@@ -53,7 +53,35 @@ const isPrivate172 = /^172\.(1[6-9]|2\d|3[01])\./.test(hostname)
 ### 1.5 Clean Up Unused Dependencies
 `@clerk/nextjs` is in `package.json` but you use Supabase Auth. Remove it — unused auth libraries are a security surface.
 
-### 1.6 Environment Variable Audit
+### 1.6 File & Component Naming Consistency
+Current state is mixed — some files use `kebab-case`, others use `PascalCase`:
+```
+components/
+├── LoginButton.tsx      ← PascalCase
+├── Header.tsx           ← PascalCase
+├── Footer.tsx           ← PascalCase
+├── Welcome.tsx          ← PascalCase
+├── music-url-input.tsx  ← kebab-case
+├── data-table.tsx       ← kebab-case
+├── email/waitlist.tsx   ← kebab-case
+├── waitlist/
+│   ├── WaitlistDialog.tsx  ← PascalCase
+│   └── WaitlistForm.tsx    ← PascalCase
+```
+
+**Convention: `kebab-case` for all files.** Rename:
+| Current | Rename to |
+|---------|-----------|
+| `LoginButton.tsx` | `login-button.tsx` |
+| `Header.tsx` | `header.tsx` |
+| `Footer.tsx` | `footer.tsx` |
+| `Welcome.tsx` | `welcome.tsx` |
+| `waitlist/WaitlistDialog.tsx` | `waitlist/waitlist-dialog.tsx` |
+| `waitlist/WaitlistForm.tsx` | `waitlist/waitlist-form.tsx` |
+
+Update all imports accordingly. The `ui/` folder is already kebab-case (shadcn convention) — no changes needed there.
+
+### 1.7 Environment Variable Audit
 - `NEXT_PUBLIC_` vars are exposed to the browser. Verify that only `SUPABASE_URL` and `SUPABASE_ANON_KEY` need this prefix
 - The `env` block in `next.config.js` re-exposes these — it's redundant since `NEXT_PUBLIC_` already makes them available. Remove the `env` block
 
@@ -233,9 +261,32 @@ Your current home page is clean but thin. Add below the hero:
 - Link both from the footer
 - You can use a generator for the initial draft, then customize
 
-### 4.5 Navigation Updates
-- Logged out: Home, Pricing, Login
-- Logged in: Generate, Account, Logout
+### 4.5 Language Toggle (EN/FR)
+Add i18n support with `next-intl` or a lightweight custom approach:
+- **Option A (recommended): `next-intl`** — mature, works well with App Router, supports server components
+  - `pnpm add next-intl`
+  - Create `messages/en.json` and `messages/fr.json` with all UI strings
+  - Wrap layout with `NextIntlClientProvider`
+  - Use `useTranslations()` hook in components
+  - Store user preference in a cookie or `profiles.locale` column
+- **Option B: Custom context** — lighter, no dependency, but more manual work
+  - Create a `LocaleContext` with a JSON dictionary per language
+  - Toggle via a dropdown in the header, persist in localStorage + cookie
+
+**What to translate:**
+- All UI text (buttons, labels, headings, error messages, placeholders)
+- Landing page copy, pricing page, legal pages
+- AI extraction results stay in their original language (don't translate track/album names)
+
+**Implementation steps:**
+1. Extract all hardcoded strings from components into message files
+2. Add a language toggle component in the header (flag icon or "EN/FR" switcher)
+3. Add `locale` field to the `profiles` table to persist preference for logged-in users
+4. Fallback: detect browser language via `Accept-Language` header for first visit
+
+### 4.6 Navigation Updates
+- Logged out: Home, Pricing, Login, EN/FR toggle
+- Logged in: Generate, Account, Logout, EN/FR toggle
 
 ---
 
@@ -257,7 +308,35 @@ Your current home page is clean but thin. Add below the hero:
 - Add Vercel Speed Insights for Web Vitals
 - Consider Sentry for error tracking (free tier is sufficient)
 
-### 5.4 SEO Basics
+### 5.4 Improve OpenAI Extraction Prompt
+The current prompt in `scrape.ts` is functional but can miss edge cases. Improvements:
+- **Add explicit format examples** — the prompt lists formats like `"Artist - Song"` but doesn't show the AI what the output should look like with real examples (few-shot)
+- **Handle numbered lists** — many music blogs use `"1. Artist - Song"` or `"#5: Song by Artist"`. Add these patterns explicitly
+- **Handle featuring/ft.** — `"Artist ft. Other - Song"` should keep the full artist string
+- **Duplicate detection** — tell the AI not to repeat the same track/album if it appears multiple times on the page (e.g., in both a heading and a list)
+- **Language-aware extraction** — when adding FR support, the prompt should handle French music formats (e.g., `"Artiste : Chanson"`, accented characters)
+- **Content truncation** — currently slicing at 15000 chars. For very long pages, consider extracting the most relevant section first (the list/tracklist part) rather than just the first 15K chars
+
+Example improved prompt structure:
+```
+You are a music extraction assistant. Extract all music references from the following webpage content.
+
+Rules:
+- TRACKS: standalone songs not associated with any album → top-level tracks array
+- ALBUMS: full album mentions → albums array, with their tracks nested inside if listed
+- Keep artist names exactly as written (including "ft.", "&", "feat.")
+- Do not duplicate: if a track appears in both an album and standalone, put it in the album only
+- Ignore navigation, ads, "related articles", and non-music content
+
+Common formats to recognize:
+- "Artist - Song Title"
+- "Song Title by Artist"
+- "1. Artist - Song Title (Album Name, 2024)"
+- "Artist: Album Name ★★★★"
+- "Artist – Song" (note: en-dash, not hyphen)
+```
+
+### 5.5 SEO Basics
 - Add proper `metadata` exports to each page (title, description, og:image)
 - Add a `sitemap.ts` to `app/`
 - Add `robots.ts` to `app/`
@@ -278,13 +357,14 @@ $$);
 ## Implementation Order (checklist)
 
 ```
-Phase 1 — Security (before anything public-facing)
+Phase 1 — Security & Codebase Hygiene (before anything public-facing)
   [ ] Add security headers to next.config.js
   [ ] Replace in-memory rate limiter with Upstash Redis
   [ ] Fix SSRF validation for 172.x range
   [ ] Remove @clerk/nextjs
   [ ] Remove redundant env block in next.config.js
   [ ] Audit all server actions for auth checks
+  [ ] Rename all components to kebab-case (LoginButton → login-button, etc.)
 
 Phase 2 — Database & Usage Tracking
   [ ] Create profiles table + trigger
@@ -299,16 +379,19 @@ Phase 3 — Stripe
   [ ] Wire webhook to update profiles.plan
   [ ] Test with Stripe CLI (stripe listen --forward-to localhost:3000/api/stripe/webhook)
 
-Phase 4 — Pages
+Phase 4 — Pages & i18n
   [ ] Build /account page
   [ ] Build /pricing page
   [ ] Enhance landing page (how it works, social proof)
   [ ] Add /terms and /privacy
+  [ ] Set up i18n (next-intl) with EN/FR message files
+  [ ] Add language toggle to header
   [ ] Update navigation
 
 Phase 5 — Polish
   [ ] Add loading/error states
   [ ] Set up transactional emails
+  [ ] Improve OpenAI extraction prompt (few-shot, dedup, edge cases)
   [ ] Add metadata/SEO to all pages
   [ ] Set up usage reset cron
   [ ] Add Sentry or equivalent
@@ -321,3 +404,4 @@ Phase 5 — Polish
 - **Don't build an admin dashboard yet.** Use Supabase dashboard + Stripe dashboard directly until you have enough users to justify it.
 - **Don't build custom billing UI.** Stripe Customer Portal handles cancellation, payment method updates, and invoice history for free.
 - **Ship Phase 1-3 before adding more features** (Apple Music, Deezer). A secure, paid product with one integration beats a free product with three.
+- **Apple Music / Deezer integration** — plan for Phase 6. The architecture already supports it: abstract the playlist creation behind a provider interface (`SpotifyProvider`, `AppleMusicProvider`, `DeezerProvider`) so users can choose where to create their playlist. Each provider needs its own OAuth flow and API client. Apple Music uses MusicKit JS + developer tokens; Deezer uses standard OAuth 2.0. Add a `provider` field to the `profiles` and `playlists` tables.
