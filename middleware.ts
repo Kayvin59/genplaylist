@@ -7,14 +7,16 @@ function applySecurityHeaders(response: NextResponse, request: NextRequest) {
   // 'unsafe-inline' is needed for Next.js inline styles and scripts in v14.
   // When upgrading to Next.js 15+, replace with nonce-based CSP.
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+  const isPreview = process.env.VERCEL_ENV !== "production";
+
   const cspDirectives = [
     `default-src 'self'`,
-    `script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://vitals.vercel-insights.com`,
-    `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
-    `font-src 'self' https://fonts.gstatic.com`,
-    `img-src 'self' data: blob:`,
-    `connect-src 'self' ${supabaseUrl} https://va.vercel-scripts.com https://vitals.vercel-insights.com`,
-    `frame-src https://open.spotify.com`,
+    `script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://vitals.vercel-insights.com${isPreview ? " https://vercel.live" : ""}`,
+    `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com${isPreview ? " https://vercel.live" : ""}`,
+    `font-src 'self' https://fonts.gstatic.com${isPreview ? " https://vercel.live" : ""}`,
+    `img-src 'self' data: blob:${isPreview ? " https://vercel.live" : ""}`,
+    `connect-src 'self' ${supabaseUrl} https://va.vercel-scripts.com https://vitals.vercel-insights.com${isPreview ? " https://vercel.live wss://ws-us3.pusher.com" : ""}`,
+    `frame-src https://open.spotify.com${isPreview ? " https://vercel.live" : ""}`,
     `frame-ancestors 'none'`,
     `form-action 'self'`,
     `base-uri 'self'`,
