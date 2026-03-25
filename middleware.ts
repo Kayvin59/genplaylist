@@ -7,16 +7,21 @@ function applySecurityHeaders(response: NextResponse, request: NextRequest) {
   // 'unsafe-inline' is needed for Next.js inline styles and scripts in v14.
   // When upgrading to Next.js 15+, replace with nonce-based CSP.
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-  const isPreview = process.env.VERCEL_ENV !== "production";
+
+  // Vercel preview/dev deployments inject a toolbar from vercel.live
+  const isProduction = process.env.VERCEL_ENV === "production";
+  const vercelLive = isProduction
+    ? ""
+    : " https://vercel.live https://*.vercel.live wss://ws-us3.pusher.com";
 
   const cspDirectives = [
     `default-src 'self'`,
-    `script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://vitals.vercel-insights.com${isPreview ? " https://vercel.live" : ""}`,
-    `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com${isPreview ? " https://vercel.live" : ""}`,
-    `font-src 'self' https://fonts.gstatic.com${isPreview ? " https://vercel.live" : ""}`,
-    `img-src 'self' data: blob:${isPreview ? " https://vercel.live" : ""}`,
-    `connect-src 'self' ${supabaseUrl} https://va.vercel-scripts.com https://vitals.vercel-insights.com${isPreview ? " https://vercel.live wss://ws-us3.pusher.com" : ""}`,
-    `frame-src https://open.spotify.com${isPreview ? " https://vercel.live" : ""}`,
+    `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com https://vitals.vercel-insights.com${vercelLive}`,
+    `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com${vercelLive}`,
+    `font-src 'self' https://fonts.gstatic.com${vercelLive}`,
+    `img-src 'self' data: blob:${vercelLive}`,
+    `connect-src 'self' ${supabaseUrl} https://va.vercel-scripts.com https://vitals.vercel-insights.com${vercelLive}`,
+    `frame-src https://open.spotify.com${vercelLive}`,
     `frame-ancestors 'none'`,
     `form-action 'self'`,
     `base-uri 'self'`,
@@ -39,6 +44,7 @@ function applySecurityHeaders(response: NextResponse, request: NextRequest) {
     "Permissions-Policy",
     "camera=(), microphone=(), geolocation=(), browsing-topics=()"
   );
+  response.headers.set("Cross-Origin-Opener-Policy", "same-origin");
 
   // Production cookie security
   if (process.env.NODE_ENV === "production") {
