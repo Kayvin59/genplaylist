@@ -1,4 +1,49 @@
-// URL Validation (extracted from musicScraper function)
+import { Ratelimit } from "@upstash/ratelimit"
+import { Redis } from "@upstash/redis"
+import { headers } from "next/headers"
+
+// --- Upstash Redis client ---
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+})
+
+// --- Rate limiters (sliding window) ---
+// Each limiter is a singleton — Upstash handles per-key tracking in Redis.
+
+/** Scraping: 10 requests per 60s per IP */
+export const scrapeRateLimit = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(10, "60 s"),
+  prefix: "ratelimit:scrape",
+})
+
+/** Playlist creation: 5 requests per 60s per IP */
+export const playlistRateLimit = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(5, "60 s"),
+  prefix: "ratelimit:playlist",
+})
+
+/** Subscribe: 20 requests per 60s per IP */
+export const subscribeRateLimit = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(20, "60 s"),
+  prefix: "ratelimit:subscribe",
+})
+
+// --- Helpers ---
+
+/**
+ * Get the client IP from request headers (works behind Vercel/proxies).
+ */
+export async function getClientIp(): Promise<string> {
+  const h = await headers()
+  return h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? h.get("x-real-ip") ?? "unknown"
+}
+
+// --- URL Validation ---
+
 export function validateUrl(url: string): { isValid: boolean; error?: string } {
   if (!url?.trim()) {
     return { isValid: false, error: "URL is required" }
@@ -12,7 +57,7 @@ export function validateUrl(url: string): { isValid: boolean; error?: string } {
       return { isValid: false, error: "Only HTTP and HTTPS URLs are supported" }
     }
 
-    // Block localhost/private IPs in production (NEW security feature)
+    // Block localhost/private IPs in production
     if (process.env.NODE_ENV === "production") {
       const hostname = urlObj.hostname.toLowerCase()
       const blockedHosts = ["localhost", "127.0.0.1", "0.0.0.0", "::1", "10.", "172.", "192.168.", "169.254."]
@@ -22,7 +67,7 @@ export function validateUrl(url: string): { isValid: boolean; error?: string } {
       }
     }
 
-    // URL length limit (NEW)
+    // URL length limit
     if (url.length > 2048) {
       return { isValid: false, error: "URL too long (max 2048 characters)" }
     }
@@ -31,38 +76,4 @@ export function validateUrl(url: string): { isValid: boolean; error?: string } {
   } catch {
     return { isValid: false, error: "Invalid URL format" }
   }
-}
-
-// Rate Limiting Helper
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>()
-
-export function checkRateLimit(
-  identifier: string,
-  maxRequests = 10,
-  windowMs = 60000,
-): { allowed: boolean; remaining: number; resetTime: number } {
-  const now = Date.now()
-
-  // Clean old entries
-  const entries = Array.from(rateLimitMap.entries())
-  for (const [key, value] of entries) {
-    if (value.resetTime < now) {
-      rateLimitMap.delete(key)
-    }
-  }
-
-  const current = rateLimitMap.get(identifier)
-
-  if (!current || current.resetTime < now) {
-    // New window
-    rateLimitMap.set(identifier, { count: 1, resetTime: now + windowMs })
-    return { allowed: true, remaining: maxRequests - 1, resetTime: now + windowMs }
-  }
-
-  if (current.count >= maxRequests) {
-    return { allowed: false, remaining: 0, resetTime: current.resetTime }
-  }
-
-  current.count++
-  return { allowed: true, remaining: maxRequests - current.count, resetTime: current.resetTime }
 }

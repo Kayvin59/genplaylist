@@ -1,6 +1,6 @@
 "use server"
 
-import { checkRateLimit, validateUrl } from "@/lib/security"
+import { getClientIp, scrapeRateLimit, validateUrl } from "@/lib/security"
 import { rawMusicScraperResult } from "@/types"
 import { openai } from "@ai-sdk/openai"
 import { generateObject } from "ai"
@@ -166,12 +166,13 @@ async function scrapeWithFirecrawl(url: string): Promise<{ success: boolean; con
 }
 
 export async function musicScraper(url: string): Promise<rawMusicScraperResult> {
-  // Rate limiting (10 req/min)
-  const rateLimitCheck = checkRateLimit(`scrape_global`, 10, 60000)
-  if (!rateLimitCheck.allowed) {
+  // Rate limiting (10 req/min per IP via Upstash Redis)
+  const ip = await getClientIp()
+  const { success: allowed, reset } = await scrapeRateLimit.limit(ip)
+  if (!allowed) {
     return {
       success: false,
-      error: `Rate limit exceeded. Try again in ${Math.ceil((rateLimitCheck.resetTime - Date.now()) / 1000)}s`,
+      error: `Rate limit exceeded. Try again in ${Math.ceil((reset - Date.now()) / 1000)}s`,
       errorType: "rate_limit",
     }
   }

@@ -1,5 +1,6 @@
 "use server"
 
+import { getClientIp, playlistRateLimit } from "@/lib/security"
 import { CreatePlaylistParams, PlaylistResult, SpotifyTrack } from "@/types"
 import { createClient } from "@/utils/supabase/server"
 
@@ -70,6 +71,16 @@ export async function fetchAlbumTracks(
 
 
 export async function createPlaylist({ name, description, tracks, albums }: CreatePlaylistParams): Promise<PlaylistResult> {
+  // Rate limiting (5 req/min per IP via Upstash Redis)
+  const ip = await getClientIp()
+  const { success: allowed, reset } = await playlistRateLimit.limit(ip)
+  if (!allowed) {
+    return {
+      success: false,
+      error: `Rate limit exceeded. Try again in ${Math.ceil((reset - Date.now()) / 1000)}s`,
+    }
+  }
+
   // Input Validation
   if (!name?.trim()) {
     return { success: false, error: "Playlist name is required" }

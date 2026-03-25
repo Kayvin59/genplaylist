@@ -1,4 +1,5 @@
 import { subscribeAction } from '@/app/actions/subscribe'
+import { subscribeRateLimit } from '@/lib/security'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
@@ -6,6 +7,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { message: "Only POST requests are allowed" },
       { status: 405 }
+    )
+  }
+
+  // Rate limiting (20 req/min per IP via Upstash Redis)
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+    ?? request.headers.get("x-real-ip")
+    ?? "unknown"
+  const { success: allowed } = await subscribeRateLimit.limit(ip)
+  if (!allowed) {
+    return NextResponse.json(
+      { message: "Too many requests. Please try again later." },
+      { status: 429 }
     )
   }
 
