@@ -118,7 +118,7 @@ export default function MusicUrlInput() {
             <Button
               type="submit"
               disabled={isLoading || !url.trim()}
-              className="w-full bg-[#1DB954] hover:bg-[#1aa34a] text-white font-medium py-3 h-11 transition-colors"
+              className="w-full bg-[#1DB954] hover:bg-[#1aa34a] text-black font-medium py-3 h-11 transition-colors"
             >
               {isLoading ? (
                 <>

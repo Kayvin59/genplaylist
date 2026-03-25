@@ -44,6 +44,7 @@ function applySecurityHeaders(response: NextResponse, request: NextRequest) {
     "Permissions-Policy",
     "camera=(), microphone=(), geolocation=(), browsing-topics=()"
   );
+  response.headers.set("Cross-Origin-Opener-Policy", "same-origin");
 
   // Production cookie security
   if (process.env.NODE_ENV === "production") {
