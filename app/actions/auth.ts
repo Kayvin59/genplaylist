@@ -16,30 +16,26 @@ export async function signInWithSpotify() {
 
     if (host) {
       const baseUrl = `${proto}://${host}`
-      console.log("[Auth] Resolved baseUrl from headers:", baseUrl)
       return baseUrl
     }
 
     // Fallback: localhost in development
     if (process.env.NODE_ENV === "development") {
-      console.log("[Auth] Fallback to localhost (dev mode)")
       return "http://localhost:3000"
     }
 
     // Fallback: explicit site URL
     if (process.env.NEXT_PUBLIC_SITE_URL) {
-      console.log("[Auth] Fallback to NEXT_PUBLIC_SITE_URL:", process.env.NEXT_PUBLIC_SITE_URL)
       return process.env.NEXT_PUBLIC_SITE_URL
     }
 
     // Fallback: Vercel auto-provided URL
     if (process.env.VERCEL_URL) {
       const url = `https://${process.env.VERCEL_URL}`
-      console.log("[Auth] Fallback to VERCEL_URL:", url)
       return url
     }
 
-    console.warn("[Auth] No URL source found, using hardcoded fallback")
+    console.warn("No URL source found, using hardcoded fallback")
     return "https://gen-playlist.vercel.app"
   }
 
