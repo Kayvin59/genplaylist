@@ -228,7 +228,7 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
                   href={playlistResult.playlistUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 bg-[#1DB954] hover:bg-[#1aa34a] text-white px-6 py-2.5 rounded-lg font-medium transition-colors text-sm"
+                  className="inline-flex items-center gap-2 bg-[#1DB954] hover:bg-[#1aa34a] text-black px-6 py-2.5 rounded-lg font-medium transition-colors text-sm"
                 >
                   <Music className="w-4 h-4" />
                   Open in Spotify
@@ -317,7 +317,7 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
             <Button
               onClick={handleCreatePlaylist}
               disabled={!hasSelection || isCreatingPlaylist || !playlistName.trim()}
-              className="bg-[#1DB954] hover:bg-[#1aa34a] text-white transition-colors flex-1 sm:flex-none"
+              className="bg-[#1DB954] hover:bg-[#1aa34a] text-black transition-colors flex-1 sm:flex-none"
               size="sm"
             >
               {isCreatingPlaylist ? (

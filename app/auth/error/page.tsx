@@ -25,7 +25,7 @@ export default function AuthError() {
           <div className="flex items-start gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
             <p className="text-sm text-red-800">{error}</p>
           </div>
-          <Button asChild className="w-full bg-[#1DB954] hover:bg-[#1aa34a] text-white transition-colors">
+          <Button asChild className="w-full bg-[#1DB954] hover:bg-[#1aa34a] text-black transition-colors">
             <Link href="/">Try again</Link>
           </Button>
         </CardContent>
