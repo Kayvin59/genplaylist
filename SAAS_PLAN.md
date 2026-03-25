@@ -303,9 +303,36 @@ Add i18n support with `next-intl` or a lightweight custom approach:
 - Payment failed notification
 - Monthly usage summary (optional, nice touch)
 
-### 5.3 Analytics & Monitoring
-- You already have `@vercel/analytics` — make sure it's initialized
-- Add Vercel Speed Insights for Web Vitals
+### 5.3 Web Vitals & Performance (current score: 88)
+Current Vercel Speed Insights numbers:
+| Metric | Current | Target | Status |
+|--------|---------|--------|--------|
+| FCP | 2.94s | < 1.8s | Needs work |
+| LCP | 2.94s | < 2.5s | Needs work |
+| TTFB | 1.48s | < 0.8s | Needs work |
+
+FCP = LCP means the largest paint IS the first paint (text-only page, no images above fold). The bottleneck is TTFB (1.48s) — the server is slow to respond, and everything else waits on it.
+
+**Fix TTFB first (biggest impact):**
+- Your middleware runs on every request (`updateSession` calls Supabase to refresh the session). This adds a Supabase round-trip before any page renders
+- For public pages (`/`, `/pricing`, `/terms`, `/privacy`), skip the session check in middleware — only run it on protected routes (`/generate`, `/account`)
+- Update middleware matcher to be more selective:
+  ```ts
+  export const config = {
+    matcher: ["/generate/:path*", "/account/:path*", "/auth/:path*"],
+  }
+  ```
+- This alone should cut TTFB in half for public pages
+
+**Fix FCP/LCP:**
+- Add `loading.tsx` to `/app` — gives an instant shell while server components resolve
+- Move `<Analytics />` out of the main content flow (it's fine where it is but verify it's not blocking render)
+- Consider `next/dynamic` with `ssr: false` for heavy client components (data-table) that aren't needed at first paint
+- The Roboto font with `display: "swap"` is correct — no issue there
+- Check if Supabase JS client is being bundled into the client — it's large. Use `@supabase/ssr` only in server components
+
+**Add monitoring:**
+- Install Vercel Speed Insights: `pnpm add @vercel/speed-insights` and add `<SpeedInsights />` to layout (you have Analytics but not Speed Insights — they're separate packages)
 - Consider Sentry for error tracking (free tier is sufficient)
 
 ### 5.4 Improve OpenAI Extraction Prompt
@@ -336,12 +363,12 @@ Common formats to recognize:
 - "Artist – Song" (note: en-dash, not hyphen)
 ```
 
-### 5.5 SEO Basics
+### 5.6 SEO Basics
 - Add proper `metadata` exports to each page (title, description, og:image)
 - Add a `sitemap.ts` to `app/`
 - Add `robots.ts` to `app/`
 
-### 5.5 Monthly Usage Reset
+### 5.7 Monthly Usage Reset
 Create a Supabase cron job (pg_cron) or Vercel Cron:
 ```sql
 -- Reset monthly usage on the 1st of each month
@@ -388,13 +415,23 @@ Phase 4 — Pages & i18n
   [ ] Add language toggle to header
   [ ] Update navigation
 
-Phase 5 — Polish
+Phase 5 — Polish & Performance
+  [ ] Fix TTFB: skip middleware session check on public pages
+  [ ] Add loading.tsx skeleton to app root
+  [ ] Install @vercel/speed-insights
   [ ] Add loading/error states
   [ ] Set up transactional emails
   [ ] Improve OpenAI extraction prompt (few-shot, dedup, edge cases)
   [ ] Add metadata/SEO to all pages
   [ ] Set up usage reset cron
   [ ] Add Sentry or equivalent
+
+Phase 6 — Smart Scraping (future, after enough user data)
+  [ ] Create sites table for domain knowledge
+  [ ] Auto-track success rate per domain
+  [ ] Add blocklist/allowlist + suggested sites in UI
+  [ ] Add "Did we get it right?" feedback after extraction
+  [ ] (Experimental) Multi-step AI agent for difficult pages
 ```
 
 ---
@@ -405,3 +442,52 @@ Phase 5 — Polish
 - **Don't build custom billing UI.** Stripe Customer Portal handles cancellation, payment method updates, and invoice history for free.
 - **Ship Phase 1-3 before adding more features** (Apple Music, Deezer). A secure, paid product with one integration beats a free product with three.
 - **Apple Music / Deezer integration** — plan for Phase 6. The architecture already supports it: abstract the playlist creation behind a provider interface (`SpotifyProvider`, `AppleMusicProvider`, `DeezerProvider`) so users can choose where to create their playlist. Each provider needs its own OAuth flow and API client. Apple Music uses MusicKit JS + developer tokens; Deezer uses standard OAuth 2.0. Add a `provider` field to the `profiles` and `playlists` tables.
+
+---
+
+## Phase 6 (future): Smart Scraping — Site Memory & Agent-Assisted Extraction
+
+This is a later-stage improvement once you have enough user data to justify it.
+
+### 6.1 Site Knowledge Base
+Build a `sites` table that remembers scraping patterns for known domains:
+```sql
+create table public.sites (
+  id uuid default gen_random_uuid() primary key,
+  domain text unique not null,            -- e.g. "pitchfork.com"
+  scrape_strategy text default 'cheerio', -- 'cheerio' | 'firecrawl' | 'blocked'
+  content_selector text,                  -- CSS selector for main content (e.g. ".article-body")
+  success_rate numeric default 0,         -- 0-1, updated after each scrape
+  avg_tracks_extracted integer default 0,
+  total_scrapes integer default 0,
+  notes text,                             -- e.g. "requires Firecrawl, Cheerio gets 403"
+  blocked boolean default false,          -- mark sites that always fail
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+```
+
+**How it works:**
+- After each scrape, upsert the domain: update `success_rate`, `total_scrapes`, `avg_tracks_extracted`
+- If a site fails with Cheerio 3+ times, auto-flag it as `scrape_strategy: 'firecrawl'`
+- If both fail repeatedly, mark `blocked: true` and show the user a message: "This site blocks automated access"
+- Over time, this builds a knowledge base of which sites work well and which don't
+
+### 6.2 Site Blocklist & Allowlist
+- **Blocklist:** Sites that never contain music or always block scraping (e.g., paywalled sites, login-required pages). Save users from wasting a scrape credit
+- **Allowlist/Featured:** Sites known to work well — show these as suggestions in the UI ("Try these: Pitchfork, RateYourMusic, Reddit r/listentothis...")
+- Both can start as a simple JSON config file and move to the DB later
+
+### 6.3 AI Agent for Difficult Pages (experimental)
+For pages where basic scraping + single-pass AI extraction fails:
+- **Multi-step agent:** First pass extracts what it can, second pass focuses on sections the first pass was uncertain about
+- **Context-aware retry:** If confidence < 0.7, try with a different content slice or a bigger model (GPT-4o instead of mini)
+- **Format detection:** Before extraction, classify the page type (numbered list, review, forum thread) and use a type-specific prompt
+
+**When to build this:** Only after you have analytics showing which scrapes fail and why. Don't optimize blind — the current single-pass approach may be good enough for 90%+ of URLs.
+
+### 6.4 User Feedback Loop
+Add a simple "Did we get it right?" thumbs up/down after extraction:
+- Store in a `scrape_feedback` table (user_id, url, domain, rating, track_count)
+- This data feeds back into the site knowledge base — low-rated domains get flagged for review
+- Over time, this becomes your most valuable dataset for improving extraction quality
