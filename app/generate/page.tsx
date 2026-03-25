@@ -1,5 +1,5 @@
 import Welcome from "@/components/Welcome"
-import MusicUrlInput from "@/components/music-url-input"
+import MusicUrlInput from "@/components/MusicUrlInput"
 import { createClient } from "@/utils/supabase/server"
 import { redirect } from "next/navigation"
 

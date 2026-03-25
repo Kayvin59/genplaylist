@@ -3,13 +3,48 @@ import { type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
   const response = await updateSession(request);
-  
+
+  // --- Content Security Policy ---
+  // 'unsafe-inline' is needed for Next.js inline styles and scripts in v14.
+  // When upgrading to Next.js 15+, replace with nonce-based CSP.
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+  const cspDirectives = [
+    `default-src 'self'`,
+    `script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com`,
+    `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
+    `font-src 'self' https://fonts.gstatic.com`,
+    `img-src 'self' data: blob:`,
+    `connect-src 'self' ${supabaseUrl} https://va.vercel-scripts.com https://vitals.vercel-insights.com`,
+    `frame-ancestors 'none'`,
+    `form-action 'self'`,
+    `base-uri 'self'`,
+    `object-src 'none'`,
+  ];
+  response.headers.set(
+    "Content-Security-Policy",
+    cspDirectives.join("; ")
+  );
+
+  // --- Security Headers ---
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.headers.set("X-DNS-Prefetch-Control", "on");
+  response.headers.set(
+    "Strict-Transport-Security",
+    "max-age=63072000; includeSubDomains; preload"
+  );
+  response.headers.set(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(), browsing-topics=()"
+  );
+
   // Production cookie security
   if (process.env.NODE_ENV === "production") {
     const supabaseCookie = request.cookies.get(
       `sb-${process.env.NEXT_PUBLIC_SUPABASE_PROJECT_ID}-auth-token`
     );
-    
+
     if (supabaseCookie) {
       response.cookies.set({
         name: supabaseCookie.name,

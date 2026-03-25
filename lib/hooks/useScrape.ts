@@ -31,12 +31,6 @@ export function useMusicScraper() {
 
     try {
       const result = await musicScraper(url)
-
-      console.log("[useScrape] Raw result from musicScraper:", JSON.stringify(result, null, 2))
-      console.log("[useScrape] result.success:", result.success)
-      console.log("[useScrape] result.data?.tracks:", result.success ? result.data?.tracks?.length : "N/A")
-      console.log("[useScrape] result.data?.albums:", result.success ? result.data?.albums?.length : "N/A")
-
       setState({
         isLoading: false,
         currentStep: "idle",
