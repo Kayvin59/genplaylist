@@ -1,6 +1,6 @@
 "use server"
 
-import { checkRateLimit, validateUrl } from "@/lib/security"
+import { checkRateLimit, getClientIp, validateUrl } from "@/lib/security"
 import { rawMusicScraperResult } from "@/types"
 import { openai } from "@ai-sdk/openai"
 import { generateObject } from "ai"
@@ -166,8 +166,9 @@ async function scrapeWithFirecrawl(url: string): Promise<{ success: boolean; con
 }
 
 export async function musicScraper(url: string): Promise<rawMusicScraperResult> {
-  // Rate limiting (10 req/min)
-  const rateLimitCheck = checkRateLimit(`scrape_global`, 10, 60000)
+  // Rate limiting (10 req/min per IP)
+  const ip = await getClientIp()
+  const rateLimitCheck = checkRateLimit(`scrape:${ip}`, 10, 60000)
   if (!rateLimitCheck.allowed) {
     return {
       success: false,
