@@ -10,7 +10,7 @@ const schema = z.object({
 
 async function saveEmail(email: string) {
   // const cookieStore = cookies()
-  const supabase = createClient()
+  const supabase = await createClient()
 
   try {
     const { data, error } = await supabase

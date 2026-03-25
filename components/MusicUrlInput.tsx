@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress"
 import { useMusicScraper } from "@/lib/hooks/useScrape"
 import { Album, AlertCircle, Globe, List, Loader2, Search, X } from "lucide-react"
 import { useState } from "react"
-import ScrapedDataTable from "./data-table"
+import ScrapedDataTable from "./DataTable"
 
 export default function MusicUrlInput() {
   const [url, setUrl] = useState("")
@@ -25,10 +25,7 @@ export default function MusicUrlInput() {
     e.preventDefault()
     if (!url.trim()) return
 
-    console.log("[MusicUrlInput] Starting scrape for:", url.trim())
     const scrapeResult = await scrapeUrl(url.trim())
-    console.log("[MusicUrlInput] scrapeResult:", JSON.stringify(scrapeResult, null, 2))
-
     if (scrapeResult.success && scrapeResult.data) {
       if (!scrapeResult.data.isMusicContent || scrapeResult.data.confidence < 0.5) {
         return
