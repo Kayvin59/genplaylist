@@ -1,14 +1,3 @@
-import { headers } from "next/headers"
-
-/**
- * Get the client IP from request headers (works behind Vercel/proxies).
- * Falls back to "unknown" if no IP can be determined.
- */
-export async function getClientIp(): Promise<string> {
-  const h = await headers()
-  return h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? h.get("x-real-ip") ?? "unknown"
-}
-
 // URL Validation (extracted from musicScraper function)
 export function validateUrl(url: string): { isValid: boolean; error?: string } {
   if (!url?.trim()) {
