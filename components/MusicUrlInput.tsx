@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress"
 import { useMusicScraper } from "@/lib/hooks/useScrape"
 import { Album, AlertCircle, Globe, List, Loader2, Search, X } from "lucide-react"
 import { useState } from "react"
-import ScrapedDataTable from "./data-table"
+import ScrapedDataTable from "./DataTable"
 
 export default function MusicUrlInput() {
   const [url, setUrl] = useState("")
