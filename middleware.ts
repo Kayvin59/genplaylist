@@ -1,20 +1,20 @@
 import { updateSession } from "@/utils/supabase/middleware";
-import { type NextRequest } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
-export async function middleware(request: NextRequest) {
-  const response = await updateSession(request);
-
+// Security headers applied to all matched routes
+function applySecurityHeaders(response: NextResponse, request: NextRequest) {
   // --- Content Security Policy ---
   // 'unsafe-inline' is needed for Next.js inline styles and scripts in v14.
   // When upgrading to Next.js 15+, replace with nonce-based CSP.
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
   const cspDirectives = [
     `default-src 'self'`,
-    `script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com`,
+    `script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://vitals.vercel-insights.com`,
     `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
     `font-src 'self' https://fonts.gstatic.com`,
     `img-src 'self' data: blob:`,
     `connect-src 'self' ${supabaseUrl} https://va.vercel-scripts.com https://vitals.vercel-insights.com`,
+    `frame-src https://open.spotify.com`,
     `frame-ancestors 'none'`,
     `form-action 'self'`,
     `base-uri 'self'`,
@@ -25,7 +25,6 @@ export async function middleware(request: NextRequest) {
     cspDirectives.join("; ")
   );
 
-  // --- Security Headers ---
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
@@ -56,14 +55,30 @@ export async function middleware(request: NextRequest) {
       });
     }
   }
+}
 
+export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  // Protected routes: full session check + security headers
+  if (
+    pathname.startsWith("/generate") ||
+    pathname.startsWith("/account") ||
+    pathname.startsWith("/auth")
+  ) {
+    const response = await updateSession(request);
+    applySecurityHeaders(response, request);
+    return response;
+  }
+
+  // Public routes: security headers only, skip Supabase session check (faster TTFB)
+  const response = NextResponse.next();
+  applySecurityHeaders(response, request);
   return response;
 }
 
 export const config = {
   matcher: [
-    "/auth/callback",
-    "/generate",
-    "/((?!_next/static|_next/image|favicon.ico).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
