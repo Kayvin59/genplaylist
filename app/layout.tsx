@@ -1,6 +1,6 @@
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
-import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import type { Metadata } from "next";
 import { Roboto } from "next/font/google";
 import React from "react";
@@ -31,7 +31,7 @@ export default function RootLayout({
 						<Header />
 						<main className="flex flex-1 w-full flex-col items-center justify-start text-center py-12 px-6">
 							{children}
-							<Analytics />
+							<SpeedInsights />
 						</main>
 						<Footer />
 					</div>
