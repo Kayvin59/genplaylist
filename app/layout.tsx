@@ -12,10 +12,32 @@ const roboto = Roboto({
 	display: "swap",
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://gen-playlist.vercel.app";
+
 export const metadata: Metadata = {
-	title: "GenPlaylist",
+	metadataBase: new URL(siteUrl),
+	title: {
+		default: "GenPlaylist — Paste a link, get a playlist",
+		template: "%s | GenPlaylist",
+	},
 	description:
-		"Easily generate playlist from your favorite music websites with GenPlaylist. Share your link and get a playlist on any streaming platform.",
+		"Paste any music article, blog post, or Reddit thread — GenPlaylist extracts every track and creates your Spotify playlist in seconds.",
+	openGraph: {
+		type: "website",
+		siteName: "GenPlaylist",
+		title: "GenPlaylist — Paste a link, get a playlist",
+		description:
+			"Paste any music article, blog post, or Reddit thread — GenPlaylist extracts every track and creates your Spotify playlist in seconds.",
+		url: siteUrl,
+		images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "GenPlaylist" }],
+	},
+	twitter: {
+		card: "summary_large_image",
+		title: "GenPlaylist — Paste a link, get a playlist",
+		description:
+			"Paste any music article, blog post, or Reddit thread — GenPlaylist extracts every track and creates your Spotify playlist in seconds.",
+		images: ["/og-image.png"],
+	},
 };
 
 export default function RootLayout({
