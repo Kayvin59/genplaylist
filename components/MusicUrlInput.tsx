@@ -9,8 +9,20 @@ import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
 import { useMusicScraper } from "@/lib/hooks/useScrape"
 import { Album, AlertCircle, Globe, List, Loader2, Search, X } from "lucide-react"
+import dynamic from "next/dynamic"
 import { useState } from "react"
-import ScrapedDataTable from "./DataTable"
+
+const ScrapedDataTable = dynamic(() => import("./DataTable"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full border border-border rounded-lg p-8 animate-pulse space-y-4">
+      <div className="h-6 w-1/3 bg-muted rounded" />
+      <div className="h-4 w-full bg-muted rounded" />
+      <div className="h-4 w-5/6 bg-muted rounded" />
+      <div className="h-4 w-2/3 bg-muted rounded" />
+    </div>
+  ),
+})
 
 export default function MusicUrlInput() {
   const [url, setUrl] = useState("")

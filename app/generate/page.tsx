@@ -1,7 +1,14 @@
 import Welcome from "@/components/Welcome"
 import MusicUrlInput from "@/components/MusicUrlInput"
 import { createClient } from "@/utils/supabase/server"
+import type { Metadata } from "next"
 import { redirect } from "next/navigation"
+
+export const metadata: Metadata = {
+  title: "Generate Playlist",
+  description:
+    "Paste a URL from any music blog, review, or Reddit thread and generate a Spotify playlist instantly.",
+}
 
 export default async function GeneratePage() {
   const supabase = await createClient()
