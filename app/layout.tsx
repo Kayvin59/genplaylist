@@ -53,10 +53,10 @@ export default function RootLayout({
 						<Header />
 						<main className="flex flex-1 w-full flex-col items-center justify-start text-center py-12 px-6">
 							{children}
-							<SpeedInsights />
 						</main>
 						<Footer />
 					</div>
+					<SpeedInsights />
 				</body>
 			</html>
 		</>
