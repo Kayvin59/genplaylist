@@ -1,4 +1,11 @@
 import LoginButton from "@/components/LoginButton";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+	title: "GenPlaylist — Paste a link, get a playlist",
+	description:
+		"Drop any music article, blog post, or Reddit thread — we extract every track and create your Spotify playlist in seconds.",
+};
 
 export default function Home() {
 	return (
