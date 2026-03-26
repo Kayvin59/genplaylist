@@ -2,6 +2,7 @@
 
 import { getClientIp, scrapeRateLimit, validateUrl } from "@/lib/security"
 import { rawMusicScraperResult } from "@/types"
+import { createClient } from "@/utils/supabase/server"
 import { openai } from "@ai-sdk/openai"
 import { generateObject } from "ai"
 import * as cheerio from "cheerio"
@@ -174,6 +175,46 @@ export async function musicScraper(url: string): Promise<rawMusicScraperResult> 
       success: false,
       error: `Rate limit exceeded. Try again in ${Math.ceil((reset - Date.now()) / 1000)}s`,
       errorType: "rate_limit",
+    }
+  }
+
+  // Daily scrape limit per authenticated user (anti-abuse, 30/day)
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("daily_scrapes_used, daily_scrapes_reset_at")
+      .eq("id", user.id)
+      .single()
+
+    if (profile) {
+      // Reset daily counter if the period has passed
+      if (new Date(profile.daily_scrapes_reset_at) < new Date()) {
+        await supabase
+          .from("profiles")
+          .update({
+            daily_scrapes_used: 1,
+            daily_scrapes_reset_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", user.id)
+      } else if (profile.daily_scrapes_used >= 30) {
+        return {
+          success: false,
+          error: "Daily scrape limit reached (30/day). Try again tomorrow.",
+          errorType: "rate_limit",
+        }
+      } else {
+        await supabase
+          .from("profiles")
+          .update({
+            daily_scrapes_used: profile.daily_scrapes_used + 1,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", user.id)
+      }
     }
   }
 
