@@ -1,5 +1,21 @@
 import type { User } from "@supabase/supabase-js";
 
+// Profile (Supabase)
+export interface Profile {
+  id: string
+  email: string
+  display_name: string | null
+  avatar_url: string | null
+  plan: "free" | "pro"
+  is_early_user: boolean
+  stripe_customer_id: string | null
+  credits_remaining: number
+  daily_scrapes_used: number
+  daily_scrapes_reset_at: string
+  created_at: string
+  updated_at: string
+}
+
 // Spotify
 export interface SpotifyTrack {
   title: string
