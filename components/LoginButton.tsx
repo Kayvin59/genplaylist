@@ -20,7 +20,7 @@ export default function LoginButton() {
 
   return (
     <Button
-      className="bg-[#1DB954] hover:bg-[#1aa34a] text-white font-semibold px-8 py-3 h-12 text-base transition-colors"
+      className="bg-[#1DB954] hover:bg-[#1aa34a] text-black font-semibold px-8 py-3 h-12 text-base transition-colors"
       onClick={handleLogin}
       disabled={isPending}
     >
