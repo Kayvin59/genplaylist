@@ -97,11 +97,10 @@ create table public.profiles (
   email text,
   display_name text,
   avatar_url text,
-  plan text default 'free' check (plan in ('free', 'pro', 'enterprise')),
   stripe_customer_id text unique,
-  stripe_subscription_id text,
-  monthly_scrapes_used integer default 0,
-  monthly_scrapes_reset_at timestamptz default now() + interval '30 days',
+  credits_remaining integer default 0,             -- purchased credits (1 credit = 1 playlist)
+  daily_scrapes_used integer default 0,            -- anti-abuse, not monetized
+  daily_scrapes_reset_at timestamptz default now() + interval '1 day',
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -138,18 +137,48 @@ create policy "Users can update own profile"
 ```
 
 ### 2.3 Track Usage Per Action
-In `scrapeAction`, after a successful scrape, increment `monthly_scrapes_used`. Check the count before processing:
+
+**Scraping** is free but rate-limited (anti-abuse). In `scrapeAction`, check and increment `daily_scrapes_used`:
 ```ts
 const { data: profile } = await supabase
   .from('profiles')
-  .select('monthly_scrapes_used, plan')
+  .select('daily_scrapes_used, daily_scrapes_reset_at')
   .eq('id', user.id)
   .single()
 
-const limit = profile.plan === 'free' ? 10 : 100
-if (profile.monthly_scrapes_used >= limit) {
-  return { error: 'Monthly limit reached. Upgrade to continue.' }
+// Reset daily counter if window has passed
+if (new Date(profile.daily_scrapes_reset_at) < new Date()) {
+  await supabase.from('profiles').update({
+    daily_scrapes_used: 1,
+    daily_scrapes_reset_at: new Date(Date.now() + 86400000),
+  }).eq('id', user.id)
+} else if (profile.daily_scrapes_used >= 30) {
+  return { error: 'Daily scrape limit reached. Try again tomorrow.' }
+} else {
+  await supabase.from('profiles').update({
+    daily_scrapes_used: profile.daily_scrapes_used + 1,
+  }).eq('id', user.id)
 }
+```
+
+**Playlist creation** costs 1 credit. In `createPlaylistAction`, check before creating:
+```ts
+const { data: profile } = await supabase
+  .from('profiles')
+  .select('credits_remaining')
+  .eq('id', user.id)
+  .single()
+
+if (profile.credits_remaining <= 0) {
+  return { error: 'No credits remaining. Purchase a pack to continue.' }
+}
+
+// ... create playlist ...
+
+// Deduct credit after successful creation
+await supabase.from('profiles').update({
+  credits_remaining: profile.credits_remaining - 1,
+}).eq('id', user.id)
 ```
 
 ### 2.4 Playlists History Table (optional but valuable)
@@ -177,33 +206,69 @@ This gives users value (history) and you data (analytics).
   STRIPE_SECRET_KEY=sk_...
   STRIPE_PUBLISHABLE_KEY=pk_...
   STRIPE_WEBHOOK_SECRET=whsec_...
-  STRIPE_PRO_PRICE_ID=price_...
+  STRIPE_STARTER_PRICE_ID=price_...
+  STRIPE_VALUE_PRICE_ID=price_...
+  STRIPE_POWER_PRICE_ID=price_...
   ```
 
-### 3.2 Pricing Model (keep it simple)
-| Plan | Price | Includes |
-|------|-------|----------|
-| Free | $0 | 10 scrapes/month, basic extraction |
-| Pro | $9/month | 100 scrapes/month, priority extraction, playlist history |
+### 3.2 Pricing Model — Credit Packs (one-time purchases, not subscriptions)
 
-You can always add tiers later. Ship with two.
+| Pack | Price | Credits | Cost/credit (user) | Your cost/credit | Margin |
+|------|-------|---------|---------------------|------------------|--------|
+| Early user bonus | Free | 3 | $0 | ~$0.07 | Loss leader |
+| Starter | $2.99 | 5 | $0.60 | ~$0.07 | 88% |
+| Value | $7.99 | 20 | $0.40 | ~$0.07 | 82% |
+| Power | $19.99 | 60 | $0.33 | ~$0.07 | 80% |
+
+**Key rules:**
+- 1 credit = 1 playlist created (scraping/previewing is free, rate-limited daily)
+- Credits never expire (simpler legally, better UX)
+- New users get 3 free credits on signup (set via the `handle_new_user` trigger)
+- Stripe Checkout in **payment mode** (one-time), not subscription mode
+
+Update the trigger to grant initial credits:
+```sql
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.profiles (id, email, display_name, avatar_url, credits_remaining)
+  values (
+    new.id,
+    new.email,
+    new.raw_user_meta_data->>'full_name',
+    new.raw_user_meta_data->>'avatar_url',
+    3  -- early user bonus
+  );
+  return new;
+end;
+$$ language plpgsql security definer;
+```
 
 ### 3.3 API Routes to Create
 ```
 app/api/stripe/
-├── checkout/route.ts      # Create Checkout Session
-├── portal/route.ts        # Create Customer Portal session (manage sub)
+├── checkout/route.ts      # Create Checkout Session (payment mode, one-time)
 └── webhook/route.ts       # Handle Stripe events
 ```
 
-**Checkout route:** Creates a Stripe Checkout session, redirects user to Stripe's hosted page. Store the `stripe_customer_id` on the profile.
+No need for a portal route — there are no subscriptions to manage. Users just buy credit packs.
+
+**Checkout route:** Creates a Stripe Checkout session in `payment` mode. Pass the pack type as metadata:
+```ts
+const session = await stripe.checkout.sessions.create({
+  mode: 'payment',
+  customer: profile.stripe_customer_id, // create customer if first purchase
+  line_items: [{ price: priceId, quantity: 1 }],
+  metadata: { user_id: user.id, pack: 'starter' }, // or 'value', 'power'
+  success_url: `${baseUrl}/account?purchase=success`,
+  cancel_url: `${baseUrl}/pricing`,
+})
+```
 
 **Webhook route (critical):**
 Handle these events:
-- `checkout.session.completed` → set plan to `pro`, save subscription ID
-- `customer.subscription.updated` → update plan if downgraded
-- `customer.subscription.deleted` → set plan back to `free`
-- `invoice.payment_failed` → notify user (email via Resend)
+- `checkout.session.completed` → add credits to `profiles.credits_remaining` based on pack metadata
+- `charge.refunded` → deduct credits (handle edge case where user already spent them)
 
 **Webhook security:**
 ```ts
@@ -218,17 +283,30 @@ export async function POST(req: Request) {
   // ALWAYS verify the signature — never skip this
   const event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET!)
 
-  // handle event...
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object
+    const userId = session.metadata?.user_id
+    const pack = session.metadata?.pack
+
+    const creditsToAdd = { starter: 5, value: 20, power: 60 }[pack] ?? 0
+
+    // Atomically increment credits
+    await supabase.rpc('add_credits', { p_user_id: userId, p_credits: creditsToAdd })
+  }
 }
 ```
 
-### 3.4 Customer Portal
-Use Stripe's hosted Customer Portal for subscription management (cancel, update payment, view invoices). This saves you from building billing UI:
-```ts
-const session = await stripe.billingPortal.sessions.create({
-  customer: profile.stripe_customer_id,
-  return_url: `${process.env.NEXT_PUBLIC_SITE_URL}/account`,
-})
+Create a Supabase RPC function for atomic credit addition:
+```sql
+create or replace function public.add_credits(p_user_id uuid, p_credits integer)
+returns void as $$
+begin
+  update public.profiles
+  set credits_remaining = credits_remaining + p_credits,
+      updated_at = now()
+  where id = p_user_id;
+end;
+$$ language plpgsql security definer;
 ```
 
 ---
@@ -238,16 +316,18 @@ const session = await stripe.billingPortal.sessions.create({
 ### 4.1 Account Page (`/account`)
 What to show:
 - **Profile section:** Spotify display name, avatar, email
-- **Plan section:** Current plan badge (Free/Pro), usage bar (e.g., "7/10 scrapes used this month"), reset date
-- **Billing section:** "Manage Subscription" button (links to Stripe Customer Portal), "Upgrade to Pro" button for free users
+- **Credits section:** Credits remaining badge, "Buy more credits" button linking to `/pricing`
+- **Daily usage:** "X/30 scrapes used today" indicator (resets daily)
+- **Purchase history:** List of credit pack purchases (date, pack, amount paid) — pull from Stripe via `stripe_customer_id`
 - **Playlist history:** Table of past playlists (date, source URL, track count, link to Spotify)
 - **Danger zone:** "Delete my account" with confirmation
 
 ### 4.2 Pricing Page (`/pricing`)
-Simple two-column layout (Free vs Pro). Keep it factual:
-- Feature comparison table
-- CTA button: "Get Started" (free) / "Upgrade" (pro)
-- FAQ section (3-5 common questions: "Can I cancel anytime?", "What happens to my playlists?", etc.)
+Three credit pack cards (Starter / Value / Power) with a "Best value" badge on Value:
+- Credits included, price, cost per credit
+- CTA button: "Buy X credits" → Stripe Checkout
+- Highlight the free 3 credits for new signups
+- FAQ section (3-5 questions: "Do credits expire?", "What counts as a credit?", "Can I get a refund?", etc.)
 
 ### 4.3 Landing Page Improvements (`/`)
 Your current home page is clean but thin. Add below the hero:
@@ -368,14 +448,15 @@ Common formats to recognize:
 - Add a `sitemap.ts` to `app/`
 - Add `robots.ts` to `app/`
 
-### 5.7 Monthly Usage Reset
-Create a Supabase cron job (pg_cron) or Vercel Cron:
+### 5.7 Daily Scrape Reset
+The daily scrape counter resets per-user based on `daily_scrapes_reset_at` (checked inline in `scrapeAction`). As a safety net, add a Supabase cron to catch any stale counters:
 ```sql
--- Reset monthly usage on the 1st of each month
-select cron.schedule('reset-monthly-usage', '0 0 1 * *', $$
+-- Safety net: reset any stale daily counters every hour
+select cron.schedule('reset-daily-scrapes', '0 * * * *', $$
   update public.profiles
-  set monthly_scrapes_used = 0,
-      monthly_scrapes_reset_at = now() + interval '30 days'
+  set daily_scrapes_used = 0,
+      daily_scrapes_reset_at = now() + interval '1 day'
+  where daily_scrapes_reset_at < now()
 $$);
 ```
 
@@ -400,10 +481,14 @@ Phase 2 — Database & Usage Tracking
   [X] Create playlists history table
   [X] Backfill existing users
 
-Phase 3 — Stripe
+Phase 3 — Stripe (credit packs, one-time payments)
   [ ] Install stripe packages
-  [ ] Create checkout, portal, and webhook routes
-  [ ] Wire webhook to update profiles.plan
+  [ ] Create Stripe products/prices for Starter, Value, Power packs
+  [ ] Create checkout and webhook routes
+  [ ] Create add_credits RPC function in Supabase
+  [ ] Wire webhook to increment credits_remaining on purchase
+  [ ] Add credit check + deduction to createPlaylistAction
+  [ ] Grant 3 free credits on signup (update handle_new_user trigger)
   [ ] Test with Stripe CLI (stripe listen --forward-to localhost:3000/api/stripe/webhook)
 
 Phase 4 — Pages & i18n
@@ -423,7 +508,7 @@ Phase 5 — Polish & Performance
   [ ] Set up transactional emails
   [ ] Improve OpenAI extraction prompt (few-shot, dedup, edge cases)
   [X] Add metadata/SEO to all pages
-  [ ] Set up usage reset cron
+  [ ] Set up daily scrape reset cron (safety net)
   [ ] Add Sentry or equivalent
 
 Phase 6 — Smart Scraping (future, after enough user data)
@@ -439,7 +524,7 @@ Phase 6 — Smart Scraping (future, after enough user data)
 ## Notes
 
 - **Don't build an admin dashboard yet.** Use Supabase dashboard + Stripe dashboard directly until you have enough users to justify it.
-- **Don't build custom billing UI.** Stripe Customer Portal handles cancellation, payment method updates, and invoice history for free.
+- **No subscription management UI needed.** Credit packs are one-time purchases — no cancellation, billing cycles, or payment method management to build.
 - **Ship Phase 1-3 before adding more features** (Apple Music, Deezer). A secure, paid product with one integration beats a free product with three.
 - **Apple Music / Deezer integration** — plan for Phase 6. The architecture already supports it: abstract the playlist creation behind a provider interface (`SpotifyProvider`, `AppleMusicProvider`, `DeezerProvider`) so users can choose where to create their playlist. Each provider needs its own OAuth flow and API client. Apple Music uses MusicKit JS + developer tokens; Deezer uses standard OAuth 2.0. Add a `provider` field to the `profiles` and `playlists` tables.
 
