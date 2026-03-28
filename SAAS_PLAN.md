@@ -385,20 +385,20 @@ $$);
 
 ```
 Phase 1 — Security & Codebase Hygiene (before anything public-facing)
-  [ ] Add security headers to next.config.js
-  [ ] Replace in-memory rate limiter with Upstash Redis
-  [ ] Fix SSRF validation for 172.x range
-  [ ] Remove @clerk/nextjs
-  [ ] Remove redundant env block in next.config.js
-  [ ] Audit all server actions for auth checks
-  [ ] Rename all components to kebab-case (LoginButton → login-button, etc.)
+  [X] Add security headers to next.config.js
+  [X] Replace in-memory rate limiter with Upstash Redis
+  [X] Fix SSRF validation for 172.x range
+  [X] Remove @clerk/nextjs
+  [X] Remove redundant env block in next.config.js
+  [X] Audit all server actions for auth checks
+  [X] Rename all components to kebab-case (LoginButton → login-button, etc.)
 
 Phase 2 — Database & Usage Tracking
-  [ ] Create profiles table + trigger
-  [ ] Enable RLS policies
-  [ ] Add usage tracking to scrape action
-  [ ] Create playlists history table
-  [ ] Backfill existing users
+  [X] Create profiles table + trigger
+  [X] Enable RLS policies
+  [X] Add usage tracking to scrape action
+  [X] Create playlists history table
+  [X] Backfill existing users
 
 Phase 3 — Stripe
   [ ] Install stripe packages
@@ -418,11 +418,11 @@ Phase 4 — Pages & i18n
 Phase 5 — Polish & Performance
   [ ] Fix TTFB: skip middleware session check on public pages
   [ ] Add loading.tsx skeleton to app root
-  [ ] Install @vercel/speed-insights
+  [X] Install @vercel/speed-insights
   [ ] Add loading/error states
   [ ] Set up transactional emails
   [ ] Improve OpenAI extraction prompt (few-shot, dedup, edge cases)
-  [ ] Add metadata/SEO to all pages
+  [X] Add metadata/SEO to all pages
   [ ] Set up usage reset cron
   [ ] Add Sentry or equivalent
 
