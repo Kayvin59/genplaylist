@@ -41,7 +41,7 @@ const PACKS = [
 
 interface CreditPurchaseModalProps {
   open: boolean
-  onOpenChange: (open: boolean) => void
+  onOpenChange: (_open: boolean) => void
   creditsRemaining?: number
 }
 

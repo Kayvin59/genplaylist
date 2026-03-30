@@ -22,7 +22,7 @@ interface AlbumGroup {
 
 interface DataTableProps extends ScrapedDataTableProps {
   creditsRemaining: number
-  onCreditsChange?: (credits: number) => void
+  onCreditsChange?: (_credits: number) => void
 }
 
 export default function ScrapedDataTable({ data, creditsRemaining, onCreditsChange }: DataTableProps) {

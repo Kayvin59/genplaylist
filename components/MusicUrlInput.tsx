@@ -14,7 +14,7 @@ import ScrapedDataTable from "./DataTable"
 
 interface MusicUrlInputProps {
   creditsRemaining: number
-  onCreditsChange?: (credits: number) => void
+  onCreditsChange?: (_credits: number) => void
 }
 
 export default function MusicUrlInput({ creditsRemaining, onCreditsChange }: MusicUrlInputProps) {
