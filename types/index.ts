@@ -35,6 +35,8 @@ export interface PlaylistResult {
   success: boolean
   error?: string
   needsAuth?: boolean
+  needsCredits?: boolean
+  creditsRemaining?: number
   playlistId?: string
   playlistUrl?: string
   tracksAdded?: number

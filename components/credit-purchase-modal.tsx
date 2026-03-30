@@ -19,6 +19,7 @@ const PACKS = [
     credits: 10,
     price: "5.00",
     perCredit: "0.50",
+    popular: false,
   },
   {
     type: "value",
@@ -34,6 +35,7 @@ const PACKS = [
     credits: 60,
     price: "20.00",
     perCredit: "0.33",
+    popular: false,
   },
 ] as const
 

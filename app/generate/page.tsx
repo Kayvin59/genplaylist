@@ -1,7 +1,8 @@
+import GenerateClient from "@/components/generate-client"
 import Welcome from "@/components/Welcome"
-import MusicUrlInput from "@/components/MusicUrlInput"
 import { createClient } from "@/utils/supabase/server"
 import { redirect } from "next/navigation"
+import { Suspense } from "react"
 
 export default async function GeneratePage() {
   const supabase = await createClient()
@@ -23,10 +24,21 @@ export default async function GeneratePage() {
     country: user.user_metadata?.country,
   }
 
+  // Fetch credits from profile
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('credits_remaining')
+    .eq('id', user.id)
+    .single()
+
+  const initialCredits = profile?.credits_remaining ?? 0
+
   return (
     <div className="w-full flex flex-col items-center justify-center">
       <Welcome user={user} spotifyData={spotifyData} />
-      <MusicUrlInput />
+      <Suspense>
+        <GenerateClient initialCredits={initialCredits} />
+      </Suspense>
     </div>
   )
 }

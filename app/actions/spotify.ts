@@ -109,6 +109,22 @@ export async function createPlaylist({ name, description, tracks, albums }: Crea
     }
   }
 
+  // Credit check — user must have at least 1 credit to create a playlist
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('credits_remaining')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile || profile.credits_remaining <= 0) {
+    return {
+      success: false,
+      error: 'No credits remaining. Purchase credits to create playlists.',
+      needsCredits: true,
+      creditsRemaining: profile?.credits_remaining ?? 0,
+    }
+  }
+
   // Input Validation
   if (!name?.trim()) {
     return { success: false, error: "Playlist name is required" }
@@ -297,12 +313,21 @@ export async function createPlaylist({ name, description, tracks, albums }: Crea
       }
     }
 
+    // Deduct 1 credit after successful playlist creation
+    const { data: updatedProfile } = await supabase
+      .from('profiles')
+      .update({ credits_remaining: profile.credits_remaining - 1 })
+      .eq('id', user.id)
+      .select('credits_remaining')
+      .single()
+
     return {
       success: true,
       playlistId: playlist.id,
       playlistUrl: playlist.external_urls.spotify,
       tracksAdded: trackUris.length,
       totalTracks: validTracks.length + (albums?.length || 0),
+      creditsRemaining: updatedProfile?.credits_remaining ?? profile.credits_remaining - 1,
     }
   } catch (error) {
     console.error("Error creating playlist:", error)

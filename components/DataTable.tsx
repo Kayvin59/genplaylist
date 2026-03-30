@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import CreditPurchaseModal from "@/components/credit-purchase-modal"
 import { ScrapedDataTableProps, UIAlbum, UITrack } from "@/types"
 import { AlertCircle, Check, ChevronDown, ChevronRight, ExternalLink, Loader2, Music } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -19,11 +20,17 @@ interface AlbumGroup {
   expanded: boolean
 }
 
-export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
+interface DataTableProps extends ScrapedDataTableProps {
+  creditsRemaining: number
+  onCreditsChange?: (credits: number) => void
+}
+
+export default function ScrapedDataTable({ data, creditsRemaining, onCreditsChange }: DataTableProps) {
   const [tracks, setTracks] = useState<UITrack[]>([])
   const [albums, setAlbums] = useState<UIAlbum[]>([])
   const [expandedAlbums, setExpandedAlbums] = useState<Set<string>>(new Set())
   const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false)
+  const [showCreditModal, setShowCreditModal] = useState(false)
   const [playlistName, setPlaylistName] = useState("")
   const [playlistResult, setPlaylistResult] = useState<{
     success: boolean
@@ -169,6 +176,12 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
   const handleCreatePlaylist = async () => {
     if (!hasSelection || !playlistName.trim()) return
 
+    // Check credits before calling the server action
+    if (creditsRemaining <= 0) {
+      setShowCreditModal(true)
+      return
+    }
+
     setIsCreatingPlaylist(true)
     setPlaylistResult(null)
 
@@ -185,7 +198,15 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
         return
       }
 
+      if (result.needsCredits) {
+        setShowCreditModal(true)
+        return
+      }
+
       if (result.success) {
+        if (result.creditsRemaining !== undefined) {
+          onCreditsChange?.(result.creditsRemaining)
+        }
         setPlaylistResult({
           success: true,
           message: `Added ${result.tracksAdded} of ${result.totalTracks} tracks to "${playlistName}".`,
@@ -314,6 +335,12 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
                 {albumsOnlySelected.length > 0 && ` + ${albumsOnlySelected.length} albums`}
               </Badge>
             )}
+            <Badge
+              variant="outline"
+              className={`text-xs ${creditsRemaining <= 0 ? "border-red-300 text-red-600" : ""}`}
+            >
+              {creditsRemaining} credit{creditsRemaining !== 1 ? "s" : ""}
+            </Badge>
             <Button
               onClick={handleCreatePlaylist}
               disabled={!hasSelection || isCreatingPlaylist || !playlistName.trim()}
@@ -498,6 +525,12 @@ export default function ScrapedDataTable({ data }: ScrapedDataTableProps) {
           )}
         </div>
       </CardContent>
+
+      <CreditPurchaseModal
+        open={showCreditModal}
+        onOpenChange={setShowCreditModal}
+        creditsRemaining={creditsRemaining}
+      />
     </Card>
   )
 }

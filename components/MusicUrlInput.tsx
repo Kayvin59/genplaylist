@@ -12,7 +12,12 @@ import { Album, AlertCircle, Globe, List, Loader2, Search, X } from "lucide-reac
 import { useState } from "react"
 import ScrapedDataTable from "./DataTable"
 
-export default function MusicUrlInput() {
+interface MusicUrlInputProps {
+  creditsRemaining: number
+  onCreditsChange?: (credits: number) => void
+}
+
+export default function MusicUrlInput({ creditsRemaining, onCreditsChange }: MusicUrlInputProps) {
   const [url, setUrl] = useState("")
   const { isLoading, currentStep, result, error, scrapeUrl, reset } = useMusicScraper()
 
@@ -196,7 +201,7 @@ export default function MusicUrlInput() {
         tracksCount: result.tracks?.length,
         albumsCount: result.albums?.length,
         confidence: result.confidence,
-      }), <ScrapedDataTable data={result} />)}
+      }), <ScrapedDataTable data={result} creditsRemaining={creditsRemaining} onCreditsChange={onCreditsChange} />)}
     </div>
   )
 }
