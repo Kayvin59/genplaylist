@@ -6,6 +6,9 @@
 		}
 	},
 	"plugins": ["react", "react-hooks", "simple-import-sort"],
+	"rules": {
+		"no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }]
+	},
 	"settings": {
 		"react": {
 			"version": "detect"
