@@ -16,12 +16,12 @@ function applySecurityHeaders(response: NextResponse, request: NextRequest) {
 
   const cspDirectives = [
     `default-src 'self'`,
-    `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com https://vitals.vercel-insights.com${vercelLive}`,
+    `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com https://vitals.vercel-insights.com https://js.stripe.com${vercelLive}`,
     `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com${vercelLive}`,
     `font-src 'self' https://fonts.gstatic.com${vercelLive}`,
     `img-src 'self' data: blob:${vercelLive}`,
-    `connect-src 'self' ${supabaseUrl} https://va.vercel-scripts.com https://vitals.vercel-insights.com${vercelLive}`,
-    `frame-src https://open.spotify.com${vercelLive}`,
+    `connect-src 'self' ${supabaseUrl} https://va.vercel-scripts.com https://vitals.vercel-insights.com https://api.stripe.com${vercelLive}`,
+    `frame-src https://open.spotify.com https://js.stripe.com${vercelLive}`,
     `frame-ancestors 'none'`,
     `form-action 'self'`,
     `base-uri 'self'`,
