@@ -22,6 +22,7 @@ interface AlbumGroup {
 
 interface DataTableProps extends ScrapedDataTableProps {
   creditsRemaining: number
+  // eslint-disable-next-line no-unused-vars
   onCreditsChange?: (_credits: number) => void
 }
 

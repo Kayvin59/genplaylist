@@ -14,6 +14,7 @@ import ScrapedDataTable from "./DataTable"
 
 interface MusicUrlInputProps {
   creditsRemaining: number
+  // eslint-disable-next-line no-unused-vars
   onCreditsChange?: (_credits: number) => void
 }
 
