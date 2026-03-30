@@ -244,7 +244,25 @@ end;
 $$ language plpgsql security definer;
 ```
 
-### 3.3 API Routes to Create
+### 3.3 Free Credits Gift on Signup
+The 3 free credits are set in the `handle_new_user` trigger above. To make this feel like a gift:
+
+**Supabase changes:**
+- Add `is_welcome_credited boolean default false` to `profiles` — tracks whether the user has seen/acknowledged the gift
+- The trigger sets `credits_remaining = 3` on creation
+
+**UI changes:**
+- On first visit to `/generate`, detect `is_welcome_credited = false` and show a welcome toast/banner: "You've got 3 free playlists to get started!"
+- After dismissal, set `is_welcome_credited = true`
+- On the playlist creation button, show remaining credits: "Create playlist (2 credits left)"
+- When credits hit 0, replace the button with a CTA to `/pricing`
+
+**Review points (things to decide):**
+- [ ] Should free credits be 3 or 5? (test what converts better)
+- [ ] Should the welcome message be a modal, a banner, or a toast?
+- [ ] Should the playlist name/description include a "Made with GenPlaylist" note for free-tier playlists? (free marketing)
+
+### 3.4 API Routes to Create
 ```
 app/api/stripe/
 ├── checkout/route.ts      # Create Checkout Session (payment mode, one-time)
@@ -489,6 +507,7 @@ Phase 3 — Stripe (credit packs, one-time payments)
   [ ] Wire webhook to increment credits_remaining on purchase
   [ ] Add credit check + deduction to createPlaylistAction
   [ ] Grant 3 free credits on signup (update handle_new_user trigger)
+  [ ] Review free credits gift UX: show welcome message on first playlist with remaining credits, update Supabase trigger + UI
   [ ] Test with Stripe CLI (stripe listen --forward-to localhost:3000/api/stripe/webhook)
 
 Phase 4 — Pages & i18n
