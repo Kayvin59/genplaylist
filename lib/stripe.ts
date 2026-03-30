@@ -6,8 +6,8 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 })
 
 export const CREDIT_PACKS = {
-  starter: { credits: 5, priceId: process.env.STRIPE_STARTER_PRICE_ID! },
-  value: { credits: 20, priceId: process.env.STRIPE_VALUE_PRICE_ID! },
+  starter: { credits: 10, priceId: process.env.STRIPE_STARTER_PRICE_ID! },
+  value: { credits: 25, priceId: process.env.STRIPE_VALUE_PRICE_ID! },
   power: { credits: 60, priceId: process.env.STRIPE_POWER_PRICE_ID! },
 } as const
 
